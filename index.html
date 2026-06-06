@@ -1,0 +1,1888 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>생산공정 관리 v21</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;height:100dvh;overflow:hidden;touch-action:manipulation;user-select:none;}
+.screen{display:none;height:100vh;height:100dvh;flex-direction:column;}
+.screen.active{display:flex;}
+.hdr{color:#fff;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.hdr h1{font-size:22px;font-weight:700;}
+.back{background:rgba(255,255,255,.2);border:none;color:#fff;font-size:18px;padding:8px 14px;border-radius:8px;cursor:pointer;}
+.datebar{background:rgba(0,0,0,.15);color:rgba(255,255,255,.9);text-align:center;padding:7px;font-size:15px;flex-shrink:0;}
+.scrollbody{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;}
+.home-group{display:flex;flex-direction:column;gap:10px;padding:8px 0;}
+.home-row{display:grid;gap:10px;}
+.home-row.r3{grid-template-columns:1fr 1fr 1fr;}
+.home-row.r2{grid-template-columns:1fr 1fr;}
+.dept-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fff;border:none;border-radius:16px;padding:20px 10px;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.08);min-height:100px;}
+.dept-btn:active{transform:scale(.96);}
+.dept-btn .ico{font-size:32px;margin-bottom:6px;}
+.dept-btn .lbl{font-size:18px;font-weight:700;color:#111;}
+.divline{height:1px;background:#e0e0e0;margin:2px 0;}
+.pin-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px;}
+.pin-title{font-size:24px;font-weight:700;color:#111;}
+.pin-sub{font-size:16px;color:#777;}
+.pin-dots{display:flex;gap:14px;}
+.pin-dot{width:20px;height:20px;border-radius:50%;border:3px solid #1565c0;background:transparent;}
+.pin-dot.on{background:#1565c0;}
+.npad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:340px;}
+.nk{height:72px;font-size:26px;font-weight:600;background:#fff;border:2px solid #ddd;border-radius:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(0,0,0,.07);color:#111;}
+.nk:active{background:#e3f2fd;}
+.nk.del{color:#e53935;}
+.nk.ok{background:#1565c0;color:#fff;border-color:#1565c0;}
+.menu-btn{background:#fff;border:none;border-radius:14px;padding:18px 16px;cursor:pointer;display:flex;align-items:center;gap:14px;box-shadow:0 3px 10px rgba(0,0,0,.07);text-align:left;width:100%;}
+.menu-btn:active{background:#f5f5f5;}
+.menu-btn .mico{font-size:30px;flex-shrink:0;}
+.menu-btn .mtitle{font-size:20px;font-weight:700;color:#111;}
+.menu-btn .mdesc{font-size:13px;color:#999;margin-top:3px;}
+.row-card{background:#fff;border-radius:14px;padding:16px;box-shadow:0 3px 10px rgba(0,0,0,.07);cursor:pointer;border-left:5px solid #e0e0e0;}
+.row-card:active{background:#f0f0f0;}
+.row-title{font-size:20px;font-weight:700;color:#111;margin-bottom:4px;}
+.row-sub{font-size:15px;font-weight:600;color:#555;margin-bottom:6px;}
+.row-info{font-size:14px;color:#777;line-height:1.8;}
+.row-arrow{font-size:24px;color:#ccc;float:right;margin-top:-4px;}
+.inp-card{background:#fff;border-radius:14px;padding:16px;box-shadow:0 3px 10px rgba(0,0,0,.07);}
+.inp-label{font-size:13px;color:#999;margin-bottom:5px;}
+.inp-val{font-size:22px;font-weight:700;color:#111;}
+.inp-row{display:flex;gap:10px;}
+.inp-row .inp-card{flex:1;}
+.inp-field{display:flex;align-items:center;justify-content:space-between;border:2.5px solid #1565c0;border-radius:10px;padding:10px 14px;cursor:pointer;}
+.inp-field .fv{font-size:26px;font-weight:700;color:#1565c0;}
+.inp-field .fu{font-size:15px;color:#999;}
+.inp-field.grn{border-color:#2e7d32;}
+.inp-field.grn .fv{color:#2e7d32;}
+.save-btn{background:#1565c0;color:#fff;border:none;border-radius:14px;padding:18px;font-size:21px;font-weight:700;cursor:pointer;flex-shrink:0;margin:8px 16px calc(16px + env(safe-area-inset-bottom,0px));}
+.save-btn:active{background:#0d47a1;}
+.kp-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;}
+.kp-bg.on{display:block;}
+.kp-sheet{display:none;position:fixed;bottom:0;left:0;right:0;background:#fff;border-radius:22px 22px 0 0;padding:18px;z-index:101;}
+.kp-sheet.on{display:block;}
+.kp-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.kp-lbl{font-size:19px;font-weight:700;}
+.kp-close{background:none;border:none;font-size:24px;color:#aaa;cursor:pointer;}
+.kp-disp{font-size:38px;font-weight:700;color:#1565c0;text-align:right;border-bottom:3px solid #1565c0;padding:6px 4px;margin-bottom:14px;}
+.kp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}
+.kp-ok{grid-column:span 3;height:58px;margin-top:2px;}
+.pin-ovl{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center;}
+.pin-ovl.on{display:flex;}
+.pin-box{background:#fff;border-radius:20px;padding:26px 20px;width:92%;max-width:360px;display:flex;flex-direction:column;align-items:center;gap:12px;}
+.pin-box-t{font-size:20px;font-weight:700;color:#111;}
+.pin-box-s{font-size:14px;color:#888;}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.82);color:#fff;padding:13px 22px;border-radius:28px;font-size:16px;z-index:300;display:none;max-width:90vw;text-align:center;}
+.toast.on{display:block;}
+.toast.ok{background:#2e7d32;}
+.toast.err{background:#c62828;}
+.loading{display:none;position:fixed;inset:0;background:rgba(255,255,255,.82);z-index:400;align-items:center;justify-content:center;flex-direction:column;gap:12px;}
+.loading.on{display:flex;}
+.spin{width:48px;height:48px;border:5px solid #e0e0e0;border-top-color:#1565c0;border-radius:50%;animation:sp 1s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg)}}
+.spin-lbl{font-size:18px;color:#1565c0;font-weight:600;}
+.empty{text-align:center;padding:50px 20px;color:#bbb;}
+.empty .eico{font-size:52px;margin-bottom:12px;}
+.empty .etxt{font-size:18px;}
+.lot-search{width:100%;font-size:18px;padding:12px 14px;border:2px solid #ddd;border-radius:12px;outline:none;background:#fff;color:#111;}
+.lot-search:focus{border-color:#1565c0;}
+.lot-card{background:#fff;border-radius:12px;padding:13px 14px;box-shadow:0 2px 8px rgba(0,0,0,.07);cursor:pointer;border-left:5px solid #e0e0e0;display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;}
+.lot-card.sel{border-left-color:#2e7d32;background:#e8f5e9;}
+.lot-card .ln{font-size:17px;font-weight:700;color:#111;}
+.lot-card .ls{font-size:12px;color:#888;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.lot-card .lr{font-size:15px;font-weight:700;color:#1565c0;white-space:nowrap;text-align:right;}
+.lot-card.sel .lr{color:#2e7d32;}
+.basket{flex-shrink:0;background:#fff;border-top:1px solid #e0e0e0;padding:12px 16px;max-height:40vh;overflow-y:auto;box-shadow:0 -3px 10px rgba(0,0,0,.05);}
+.basket .bt{font-size:14px;font-weight:700;color:#555;margin-bottom:6px;}
+.bchip{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px dashed #eee;font-size:15px;color:#111;}
+.bchip .bx{color:#c62828;font-size:20px;cursor:pointer;padding:0 8px;}
+.bsum{display:flex;justify-content:space-between;font-size:16px;font-weight:700;margin-top:8px;color:#111;}
+.bfield{display:flex;justify-content:space-between;align-items:center;border:2.5px solid #2e7d32;border-radius:10px;padding:11px 14px;margin-top:10px;cursor:pointer;}
+.bfield .bfv{font-size:23px;font-weight:700;color:#2e7d32;}
+.bcalc{font-size:14px;color:#666;margin-top:8px;text-align:right;}
+.invbtn{flex-shrink:0;border:none;border-radius:9px;padding:9px 12px;font-size:14px;font-weight:700;cursor:pointer;}
+.invbtn.cx{background:#fde8e8;color:#c62828;}
+.invbtn.rs{background:#e8f1fd;color:#1565c0;}
+.navtabs{display:flex;gap:8px;flex-shrink:0;padding:8px 16px 4px;}
+.navtab{flex:1;border:2px solid #ddd;background:#fff;border-radius:12px;padding:20px 8px;font-size:18px;font-weight:700;color:#666;cursor:pointer;}
+#inpTitle{flex:1;text-align:center;font-size:25px;}
+.navtab.active{background:#1565c0;border-color:#1565c0;color:#fff;}
+.navtab:active{transform:scale(.97);}
+.lot-card.lock{opacity:.55;background:#fafafa;cursor:default;}
+.lot-card.lock .ln{color:#888;}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+<div class="loading" id="loading"><div class="spin"></div><div class="spin-lbl">처리 중...</div></div>
+
+<!-- 작업지시 입력 화면 -->
+<div class="screen" id="orderSc">
+  <div class="hdr" style="background:#b71c1c"><button class="back" onclick="openInventory()">← 뒤로</button><h1>📋 작업지시 등록</h1><div style="width:64px"></div></div>
+  <div class="scrollbody" id="orderBody"></div>
+  <button class="save-btn" style="background:#b71c1c" onclick="submitOrder()">✅ 등록 · 자재실로 전달</button>
+</div>
+
+<!-- 초기 세팅 화면 -->
+<div class="screen" id="setupSc">
+  <div class="hdr" style="background:#37474f"><button class="back" onclick="openInventory()">← 뒤로</button><h1>⚙️ 초기 세팅</h1><div style="width:64px"></div></div>
+  <div class="scrollbody" id="setupBody"></div>
+</div>
+
+<!-- 라인 추가 / 작업자 추가 시트 -->
+<div class="kp-bg" id="addRowBg" onclick="closeAddRow()" style="z-index:150"></div>
+<div id="addRowSheet" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#fff;border-radius:22px 22px 0 0;z-index:151;max-height:80vh;overflow-y:auto"></div>
+
+<div class="kp-bg" id="kpBg" onclick="cancelKP()"></div>
+<div class="kp-sheet" id="kpSheet">
+  <div class="kp-head"><div class="kp-lbl" id="kpLbl">입력</div><button class="kp-close" onclick="cancelKP()">✕</button></div>
+  <div class="kp-disp" id="kpDisp">0</div>
+  <div class="kp-grid" id="kpGrid"></div>
+</div>
+
+<div class="pin-ovl" id="pinOvl" onclick="if(event.target===this)closePinOvl()">
+  <div class="pin-box" style="position:relative">
+    <button onclick="closePinOvl()" style="position:absolute;top:8px;right:12px;background:none;border:none;font-size:26px;color:#bbb;cursor:pointer;line-height:1">✕</button>
+    <div class="pin-box-t">✍️ 저장 확인</div>
+    <div class="pin-box-s">담당자 비밀번호를 입력하세요</div>
+    <div class="pin-dots" id="pinDots"></div>
+    <div class="npad" id="pinNpad"></div>
+  </div>
+</div>
+
+<div class="screen active" id="home">
+  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1></div>
+  <div class="datebar" id="homeDateBar"></div>
+  <div class="scrollbody">
+    <div class="home-group">
+      <div class="home-row r3">
+        <button class="dept-btn" style="border-top:5px solid #2e7d32" onclick="login('MATERIAL','자재실','#2e7d32')"><div class="ico">⚗️</div><div class="lbl">자재실</div></button>
+        <button class="dept-btn" style="border-top:5px solid #1565c0" onclick="login('MACHINE','기계실','#1565c0')"><div class="ico">⚙️</div><div class="lbl">기계실</div></button>
+        <button class="dept-btn" style="border-top:5px solid #bf360c" onclick="login('WELD','용접실','#bf360c')"><div class="ico">🔥</div><div class="lbl">용접실</div></button>
+      </div>
+      <div class="divline"></div>
+      <div class="home-row r3">
+        <button class="dept-btn" style="border-top:5px solid #546e7a" onclick="login('OUTSOURCE','외주','#546e7a')"><div class="ico">🚚</div><div class="lbl">외주</div></button>
+        <button class="dept-btn" style="border-top:5px solid #00695c" onclick="login('GARANG','가랑실','#00695c')"><div class="ico">🪢</div><div class="lbl">가랑실</div></button>
+        <button class="dept-btn" style="border-top:5px solid #e65100" onclick="login('ASSEMBLY','조립실','#e65100')"><div class="ico">🔗</div><div class="lbl">조립실</div></button>
+      </div>
+      <div class="divline"></div>
+      <div class="home-row r2">
+        <button class="dept-btn" style="border-top:5px solid #6a1b9a" onclick="login('QUALITY','품질부','#6a1b9a')"><div class="ico">🔍</div><div class="lbl">품질부</div></button>
+        <button class="dept-btn" style="border-top:5px solid #b71c1c" onclick="login('MGMT','관리부','#b71c1c')"><div class="ico">📋</div><div class="lbl">관리부</div></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="loginSc">
+  <div class="hdr" id="loginHdr"><button class="back" onclick="goHome()">← 홈</button><h1 id="loginName">부서</h1><div style="width:64px"></div></div>
+  <div class="pin-wrap">
+    <div class="pin-title">부서 비밀번호</div>
+    <div class="pin-sub">숫자를 눌러 입력하세요</div>
+    <div class="pin-dots" id="loginDots"></div>
+    <div class="npad" id="loginNpad"></div>
+  </div>
+</div>
+
+<div class="screen" id="menuSc">
+  <div class="hdr" id="menuHdr"><button class="back" onclick="goHome()">← 홈</button><h1 id="menuName">부서</h1><div style="width:64px"></div></div>
+  <div class="datebar" id="menuDateBar"></div>
+  <div class="scrollbody" id="menuBody"></div>
+</div>
+
+<div class="screen" id="listSc">
+  <div class="hdr" id="listHdr"><button class="back" id="listBack">← 메뉴</button><h1 id="listTitle">목록</h1><div style="width:64px"></div></div>
+  <div class="scrollbody" id="listBody"></div>
+</div>
+
+<div class="screen" id="inpSc">
+  <div class="hdr" id="inpHdr"><button class="back" id="inpBack">← 뒤로</button><h1 id="inpTitle">입력</h1><button class="back" id="inpChainBtn" style="display:none;white-space:nowrap;padding:8px 12px;background:rgba(255,255,255,.28)" onclick="openChainProd()">체인생산 ▸</button></div>
+  <div class="scrollbody" id="inpBody"></div>
+  <div class="navtabs" id="inpNav" style="display:none"><button class="navtab" id="inpNavA"></button><button class="navtab" id="inpNavB"></button></div>
+  <button class="save-btn" id="saveBtn">💾 저장하기</button>
+</div>
+
+<div class="screen" id="lotSc">
+  <div class="hdr" id="lotHdr"><button class="back" id="lotBack">← 메뉴</button><h1 id="lotTitle">투입</h1><button class="back" id="lotRefresh" style="padding:8px 12px">🔄</button></div>
+  <div style="padding:10px 16px 6px;flex-shrink:0;display:flex;gap:8px;align-items:center"><input id="lotSearch" class="lot-search" placeholder="🔍 번호 검색" style="flex:1"><button id="lotCheckBtn" class="back" style="background:#e69500;color:#fff;white-space:nowrap;padding:11px 12px;display:none" onclick="openWireCheck()">📥 입고확인</button></div>
+  <div class="scrollbody" id="lotAvail" style="padding-top:4px;gap:0"></div>
+  <div class="basket" id="lotBasket"></div>
+  <div class="navtabs" id="lotNav" style="display:none"><button class="navtab" id="lotNavA"></button><button class="navtab" id="lotNavB"></button></div>
+  <button class="save-btn" id="lotSaveBtn">💾 저장하기</button>
+</div>
+
+<script type="module">
+// ── Firebase SDK ──────────────────────────────────────────────
+import { initializeApp }                          from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp, writeBatch }
+                                                   from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCiqr0ooR2s1Sps0hq0F5K9F1GoFm-HEoQ",
+  authDomain: "factory-process.firebaseapp.com",
+  projectId: "factory-process",
+  storageBucket: "factory-process.firebasestorage.app",
+  messagingSenderId: "1059311200802",
+  appId: "1:1059311200802:web:c4bf4f20210230f445f87b"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const db    = getFirestore(fbApp);
+
+const DEMO = false;
+
+// ── Firestore 헬퍼 ────────────────────────────────────────────
+// 공정 행 목록 읽기
+async function fbGetRows(dept) {
+  const colRef = collection(db, 'rows');
+  const q = query(colRef, orderBy('date','desc'));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({rowNum: d.id, ...d.data()}));
+}
+
+// 부서 비밀번호 확인
+async function fbVerifyDept(code, pw) {
+  const ref = doc(db, 'depts', code);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return {success:false};
+  return snap.data().pw === pw ? {success:true} : {success:false};
+}
+
+// 작업자 PIN 확인
+async function fbVerifyEmp(pin, dept) {
+  const q = query(collection(db,'employees'), where('pin','==',pin), where('dept','==',dept));
+  const snap = await getDocs(q);
+  if (snap.empty) return {success:false};
+  const d = snap.docs[0].data();
+  return {success:true, name:d.name};
+}
+
+// 선재 후중량 저장 (단건)
+async function fbSaveWire(rowNum, weight, empName) {
+  const ref = doc(db, 'rows', String(rowNum));
+  await updateDoc(ref, {wireReal: weight, wireEmp: empName, wireTs: serverTimestamp()});
+  return {success:true};
+}
+
+// 선재 후중량 저장 (복수)
+async function fbSaveWires(items, empName) {
+  const batch = writeBatch(db);
+  items.forEach(it => {
+    const ref = doc(db, 'rows', String(it.rowNum));
+    batch.update(ref, {wireReal: it.weight, wireEmp: empName, wireTs: serverTimestamp()});
+  });
+  await batch.commit();
+  // 선재 로트 생성
+  for (const it of items) {
+    const rowSnap = await getDoc(doc(db,'rows',String(it.rowNum)));
+    const row = rowSnap.data() || {};
+    const lotNo = it.rowNum + '-W';
+    await setDoc(doc(db,'wireLots', lotNo), {
+      no: lotNo, meltNo: row.meltNo||'', rowNum: it.rowNum,
+      wtype: row.wireType||'', cont: row.content||'', mat: row.material||'',
+      left: it.weight, chainType: row.chainType||'', chainLen: row.chainLen||'', chainWt: row.chainWt||0,
+      status: '검수대기', claimed: it.weight, emp: empName, ts: serverTimestamp()
+    }, {merge:true});
+  }
+  return {success:true};
+}
+
+// 입고확인 대기 선재 로트
+async function fbGetPendingWires() {
+  const q = query(collection(db,'wireLots'), where('status','in',['검수대기','불일치']));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({...d.data()}));
+}
+
+// 입고확인 대기 체인 로트
+async function fbGetPendingChains() {
+  const q = query(collection(db,'chainLots'), where('status','in',['검수대기','불일치']));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({...d.data()}));
+}
+
+// 선재 입고확인 저장
+async function fbConfirmWires(items, empName) {
+  let ok=0, bad=0;
+  for (const it of items) {
+    const ref = doc(db,'wireLots', it.no);
+    const snap = await getDoc(ref);
+    const claimed = snap.exists() ? (snap.data().claimed||0) : 0;
+    const diff = Math.abs(it.checkWeight - claimed);
+    const status = (claimed>0 && diff > claimed*0.05) ? '불일치' : '사용가능';
+    await updateDoc(ref, {status, checkWeight: it.checkWeight, checkEmp: empName, checkTs: serverTimestamp()});
+    if (status==='사용가능') ok++; else bad++;
+  }
+  return {success:true, ok, bad};
+}
+
+// 체인 입고확인 저장
+async function fbConfirmChains(items, empName) {
+  let ok=0, bad=0;
+  for (const it of items) {
+    const ref = doc(db,'chainLots', it.no);
+    const snap = await getDoc(ref);
+    const claimed = snap.exists() ? (snap.data().claimed||0) : 0;
+    const diff = Math.abs(it.checkWeight - claimed);
+    const status = (claimed>0 && diff > claimed*0.05) ? '불일치' : '사용가능';
+    await updateDoc(ref, {status, checkWeight: it.checkWeight, checkEmp: empName, checkTs: serverTimestamp()});
+    if (status==='사용가능') ok++; else bad++;
+  }
+  return {success:true, ok, bad};
+}
+
+// 사용 가능 선재 로트 (기계실 체인생산용)
+async function fbGetWireLots() {
+  const q = query(collection(db,'wireLots'), where('status','==','사용가능'));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => d.data());
+}
+
+// 사용 가능 체인 로트 (용접실용)
+async function fbGetChainLots() {
+  const q = query(collection(db,'chainLots'), where('status','==','사용가능'));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => d.data());
+}
+
+// 체인 생산중량 일괄 저장
+async function fbSaveChainsBatch(items, empName) {
+  let made=0, haeriSum=0;
+  for (const it of items) {
+    const wRef = doc(db,'wireLots', it.no);
+    const wSnap = await getDoc(wRef);
+    const wire = wSnap.data()||{};
+    const haeri = (wire.left||0) - it.weight;
+    haeriSum += haeri;
+    // 선재 로트 상태 업데이트
+    await updateDoc(wRef, {status:'사용됨', chainProd: it.weight, haeri, prodEmp: empName, prodTs: serverTimestamp()});
+    // 체인 로트 생성
+    const chainNo = it.no + '-C';
+    await setDoc(doc(db,'chainLots', chainNo), {
+      no: chainNo, wireNo: it.no, meltNo: wire.meltNo||'',
+      chainType: wire.chainType||'', left: it.weight, haeri,
+      status: '검수대기', claimed: it.weight, emp: empName, ts: serverTimestamp()
+    }, {merge:true});
+    // rows 업데이트
+    if (wire.rowNum) {
+      await updateDoc(doc(db,'rows',String(wire.rowNum)), {chainProd: it.weight, haeri, chainEmp: empName, chainTs: serverTimestamp()});
+    }
+    made++;
+  }
+  return {success:true, made, haeriSum};
+}
+
+// 용접 후중량 일괄 저장
+async function fbSaveWeldsBatch(items, empName) {
+  let made=0, incSum=0;
+  for (const it of items) {
+    const cRef = doc(db,'chainLots', it.no);
+    const cSnap = await getDoc(cRef);
+    const chain = cSnap.data()||{};
+    const inc = it.weight - (chain.left||0);
+    incSum += inc;
+    await updateDoc(cRef, {status:'사용됨', weldAfter: it.weight, inc, weldEmp: empName, weldTs: serverTimestamp()});
+    // 용접 이력 기록
+    const weldNo = it.no + '-Z';
+    await setDoc(doc(db,'welds', weldNo), {
+      no: weldNo, chainNo: it.no, meltNo: chain.meltNo||'',
+      weld: it.weight, inc, emp: empName, ts: serverTimestamp()
+    }, {merge:true});
+    made++;
+  }
+  return {success:true, made, incSum};
+}
+
+// 재고 현황
+async function fbGetInventory() {
+  const [wSnap, cSnap, zSnap] = await Promise.all([
+    getDocs(collection(db,'wireLots')),
+    getDocs(collection(db,'chainLots')),
+    getDocs(collection(db,'welds'))
+  ]);
+  return {
+    wires:  wSnap.docs.map(d=>({...d.data(), no:d.id})),
+    chains: cSnap.docs.map(d=>({...d.data(), no:d.id, ctype:d.data().chainType})),
+    welds:  zSnap.docs.map(d=>d.data())
+  };
+}
+
+// 로트 취소/복구
+async function fbCancelLot(kind, no, restore) {
+  const colName = kind==='wire' ? 'wireLots' : 'chainLots';
+  await updateDoc(doc(db, colName, no), {status: restore ? '사용가능' : '취소'});
+  return {success:true};
+}
+
+// 관리부 행 등록 (새 공정 투입)
+async function fbAddRow(rowData) {
+  const ref = doc(collection(db,'rows'));
+  await setDoc(ref, {...rowData, ts: serverTimestamp()});
+  return {success:true, id: ref.id};
+}
+
+// ── 기존 apiGet/apiPost를 Firebase로 교체 ─────────────────────
+window._fbApi = {
+  fbGetRows, fbVerifyDept, fbVerifyEmp,
+  fbSaveWire, fbSaveWires,
+  fbGetPendingWires, fbGetPendingChains,
+  fbConfirmWires, fbConfirmChains,
+  fbGetWireLots, fbGetChainLots,
+  fbSaveChainsBatch, fbSaveWeldsBatch,
+  fbGetInventory, fbCancelLot, fbAddRow
+};
+window._db = db;
+window._fbReady = true;
+window._fbFirestore = { getDocs, collection, doc, setDoc, updateDoc, addDoc, deleteDoc };
+document.dispatchEvent(new Event('fbReady'));
+</script>
+
+<script>
+var DEMO = false;
+var S = {
+  dept:null, deptName:null, deptColor:'#1565c0',
+  user:null, loginPin:'', personalPin:'', personalCB:null,
+  rows:[], selRow:null, inpMode:null,
+  kpField:'', kpVal:'', fields:{}
+};
+
+function fmt(n) {
+  var num = parseFloat(n) || 0;
+  var parts = num.toFixed(0).split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return parts.join('.');
+}
+
+function initApp() {
+  setDateBars();
+  buildNpad('loginNpad', loginKey);
+  buildNpad('pinNpad', pinKey);
+  buildKpGrid();
+  var _ls = document.getElementById('lotSearch'); if (_ls) _ls.addEventListener('input', renderLotAvail);
+  var _lr = document.getElementById('lotRefresh'); if (_lr) _lr.onclick = function() { reloadLots(false); };
+  setInterval(function() {
+    if (document.getElementById('kpSheet').classList.contains('on')) return;
+    if (document.getElementById('pinOvl').classList.contains('on')) return;
+    var lot = document.getElementById('lotSc');
+    if (lot && lot.classList.contains('active')) { reloadLots(true); return; }
+    var inp = document.getElementById('inpSc');
+    if (inp && inp.classList.contains('active') && S.screenMode === 'check') { pollCheck(); }
+  }, 12000);
+}
+
+// Firebase 준비 완료 후 앱 초기화
+if (window._fbReady) {
+  initApp();
+} else {
+  document.addEventListener('fbReady', initApp);
+}
+
+function setDateBars() {
+  var d = new Date();
+  var days = ['일','월','화','수','목','금','토'];
+  var s = d.getFullYear() + '년 ' + (d.getMonth()+1) + '월 ' + d.getDate() + '일 ' + days[d.getDay()] + '요일';
+  document.getElementById('homeDateBar').textContent = s;
+  document.getElementById('menuDateBar').textContent = s;
+}
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+}
+function goHome() { S.loginPin = ''; show('home'); }
+function goMenu() { show('menuSc'); }
+
+function login(code, name, color) {
+  S.dept = code; S.deptName = name; S.deptColor = color; S.loginPin = '';
+  document.getElementById('loginName').textContent = name;
+  document.getElementById('loginHdr').style.background = color;
+  renderDots('loginDots', 0);
+  show('loginSc');
+}
+
+function loginKey(k) {
+  if (k === 'del') { S.loginPin = S.loginPin.slice(0,-1); renderDots('loginDots', S.loginPin.length); }
+  else if (k === 'ok') { doLoginVerify(); }
+  else if (S.loginPin.length < 6) {
+    S.loginPin += k; renderDots('loginDots', S.loginPin.length);
+    if (S.loginPin.length === 4) setTimeout(doLoginVerify, 200);
+  }
+}
+
+async function doLoginVerify() {
+  if (!S.loginPin.length) return;
+  showLoad();
+  var ok = false;
+  if (DEMO) {
+    await sleep(400);
+    var pw = {MGMT:'0000',MATERIAL:'1111',MACHINE:'2222',WELD:'3333',QUALITY:'4444',GARANG:'5555',ASSEMBLY:'6666',OUTSOURCE:'7777'};
+    ok = pw[S.dept] === S.loginPin;
+  } else {
+    try { var r = await apiGet('verifyDept', {code:S.dept, pw:S.loginPin}); ok = r.success; }
+    catch(e) { hideLoad(); toast('❌ 연결 오류', 2000, 'err'); return; }
+  }
+  hideLoad();
+  if (ok) { S.loginPin = ''; enterDept(); }
+  else { toast('❌ 비밀번호가 틀렸습니다', 2000, 'err'); S.loginPin = ''; renderDots('loginDots', 0); }
+}
+
+function enterDept() {
+  if (S.dept === 'MATERIAL') openList('wire');       // 자재실 → 용해 목록 바로
+  else if (S.dept === 'MACHINE') openWireCheck();    // 기계실 → 입고확인 먼저 (체인생산 버튼 제공)
+  else if (S.dept === 'WELD') openChainCheck();        // 용접실 → 체인 입고확인 먼저
+  else if (S.dept === 'MGMT') openMenu();             // 관리부 → 메뉴
+  else openMenu();                                    // 그 외 부서는 메뉴 유지
+}
+
+function openMenu() {
+  document.getElementById('menuName').textContent = S.deptName;
+  document.getElementById('menuHdr').style.background = S.deptColor;
+  var body = document.getElementById('menuBody');
+  body.innerHTML = '';
+  var items = {
+    MATERIAL: [{ico:'🔥', title:'용해 등록', desc:'선재 후중량 입력', action:function(){openList('wire');}}],
+    MACHINE:  [{ico:'📥', title:'선재 입고확인', desc:'받은 무게 확인 → 활성화', action:function(){openWireCheck();}},
+               {ico:'⛓️', title:'체인 생산', desc:'선재 투입 → 체인 생산', action:function(){openChainProd();}}],
+    WELD:     [{ico:'✅', title:'용접 작업', desc:'체인 투입 → 용접 후 중량', action:function(){openWeldProd();}}],
+    MGMT:     [
+      {ico:'📊', title:'재고·생산현황', desc:'선재/체인 재고 · 용접 이력', action:function(){openInventory();}},
+      {ico:'📋', title:'작업지시 등록', desc:'새 용해 · 공정 투입', action:function(){openOrderInput();}},
+      {ico:'⚙️', title:'초기 세팅', desc:'부서 비밀번호 · 작업자 관리', action:function(){openSetup();}}
+    ],
+    OUTSOURCE:[{ico:'🚚', title:'외주 작업', desc:'준비 중', action:function(){toast('준비 중',2000);}}],
+    GARANG:   [{ico:'🪢', title:'가랑 작업', desc:'준비 중', action:function(){toast('준비 중',2000);}}],
+    ASSEMBLY: [{ico:'🔗', title:'조립 작업', desc:'준비 중', action:function(){toast('준비 중',2000);}}],
+    QUALITY:  [{ico:'🔍', title:'품질 검사', desc:'준비 중', action:function(){toast('준비 중',2000);}}],
+  };
+  (items[S.dept] || []).forEach(function(item) {
+    var btn = document.createElement('button');
+    btn.className = 'menu-btn';
+    btn.innerHTML = '<div class="mico">' + item.ico + '</div><div><div class="mtitle">' + item.title + '</div><div class="mdesc">' + item.desc + '</div></div>';
+    btn.onclick = item.action;
+    body.appendChild(btn);
+  });
+  show('menuSc');
+}
+
+async function openList(mode) {
+  S.inpMode = mode;
+  var titles = {wire:'용해 등록 목록', chain:'체인 생산 목록', weld:'용접 목록', view:'오늘 생산현황'};
+  document.getElementById('listTitle').textContent = titles[mode] || '목록';
+  document.getElementById('listHdr').style.background = S.deptColor;
+  var _lkb = document.getElementById('listBack'); _lkb.onclick = goHome; _lkb.textContent = '← 홈';
+  showLoad();
+
+  if (DEMO) { await sleep(400); S.rows = demoRows(); }
+  else {
+    try { var r = await apiGet('getRows', {dept:S.dept}); S.rows = r.data || []; }
+    catch(e) { S.rows = demoRows(); }
+  }
+  hideLoad();
+
+  var filtered = S.rows.filter(function(r) {
+    if (mode === 'wire')  return !r.wireReal;
+    if (mode === 'chain') return r.wireReal && !r.chainProd;
+    if (mode === 'weld')  return r.chainProd && !r.weldAfter;
+    return true;
+  });
+
+  var body = document.getElementById('listBody');
+  body.innerHTML = '';
+  if (!filtered.length) {
+    body.innerHTML = '<div class="empty"><div class="eico">📭</div><div class="etxt">현재 입력할 항목이 없습니다</div></div>';
+    show('listSc'); return;
+  }
+
+  if (mode === 'wire') {
+    // 용해번호별 묶음 — 남은(미완성) 선재만 카드로, 진행현황은 전체 기준
+    var groups = {};
+    var groupOrder = [];
+    filtered.forEach(function(row) {
+      if (!groups[row.meltNo]) { groups[row.meltNo] = []; groupOrder.push(row.meltNo); }
+      groups[row.meltNo].push(row);
+    });
+    groupOrder.forEach(function(meltNo) {
+      var remainRows = groups[meltNo];
+      var allRows = S.rows.filter(function(r) { return r.meltNo === meltNo; });
+      var total = allRows.length;
+      var doneRows = allRows.filter(function(r) { return r.wireReal; });
+      var done = doneRows.length;
+      var remain = total - done;
+      var first = remainRows[0];
+
+      // 선재종류 · 예상중량 · 후중량 한 줄, 연한 실선 구분
+      var headHtml =
+        '<div style="display:flex;gap:14px;padding:3px 0 5px;font-size:11px;color:#aaa;font-weight:600">' +
+          '<span style="flex:0 0 96px">선재종류</span>' +
+          '<span style="flex:0 0 70px;text-align:right">예상중량</span>' +
+          '<span style="flex:0 0 70px;text-align:right">후중량</span>' +
+        '</div>';
+      var rowsHtml = allRows.map(function(r) {
+        var doneRow = !!r.wireReal;
+        var realTxt = doneRow
+          ? '<span style="color:#2e7d32;font-weight:700">' + fmt(r.wireReal) + 'g</span>'
+          : '<span style="color:#cfcfcf">—</span>';
+        var nameTxt = (doneRow ? '✅ ' : '') + (r.wireType||'-');
+        return '<div style="display:flex;gap:14px;align-items:baseline;padding:7px 0;border-bottom:1px solid #f1f1f1' + (doneRow ? ';opacity:.6' : '') + '">' +
+            '<span style="flex:0 0 96px;font-weight:600;color:#222;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + nameTxt + '</span>' +
+            '<span style="flex:0 0 70px;text-align:right;color:#1565c0;font-weight:700">' + fmt(r.wirePlan) + 'g</span>' +
+            '<span style="flex:0 0 70px;text-align:right">' + realTxt + '</span>' +
+          '</div>';
+      }).join('');
+
+      var card = document.createElement('div');
+      card.className = 'row-card';
+      card.style.borderLeftColor = S.deptColor;
+      card.innerHTML =
+        '<span class="row-arrow">›</span>' +
+        '<div class="row-title">' + meltNo + '</div>' +
+        '<div class="row-sub">' + (first.material||'') + ' ' + (first.content||'-') + '%</div>' +
+        '<div style="font-size:13px;margin:4px 0 6px">총 <b>' + total + '</b>종 &nbsp;·&nbsp; <span style="color:#2e7d32">완성 <b>' + done + '</b></span> &nbsp;·&nbsp; <span style="color:#1565c0">남음 <b>' + remain + '</b></span></div>' +
+        headHtml + rowsHtml;
+      card.onclick = function() { openWireGroupInp(meltNo, remainRows); };
+      body.appendChild(card);
+    });
+  } else {
+    filtered.forEach(function(row) {
+      var card = document.createElement('div');
+      card.className = 'row-card';
+      card.style.borderLeftColor = S.deptColor;
+      card.innerHTML = buildCard(row, mode);
+      if (mode !== 'view') {
+        card.onclick = function() { S.selRow = row; openInp(mode, row); };
+      }
+      body.appendChild(card);
+    });
+  }
+  show('listSc');
+}
+
+function buildCard(r, mode) {
+  if (mode === 'wire') {
+    return '<span class="row-arrow">›</span>' +
+      '<div class="row-title">' + r.meltNo + '</div>' +
+      '<div class="row-sub">' + (r.wireType||'-') + ' &nbsp;|&nbsp; ' + (r.material||'') + ' ' + (r.content||'-') + '%</div>' +
+      '<div class="row-info">' +
+        '순은 <b>' + fmt(r.silver) + 'g</b>&nbsp; 알로이 <b>' + fmt(r.alloy) + 'g</b>&nbsp; 연주로 <b>' + fmt(r.furnace) + 'g</b><br>' +
+        '재말수령 <b>' + fmt(r.scrapRecv) + 'g</b>&nbsp; 재말투입 <b>' + fmt(r.scrapUse) + 'g</b>&nbsp; 재말잔량 <b>' + fmt(r.scrapLeft) + 'g</b><br>' +
+        '불량선재 <b>' + fmt(r.badWire) + 'g</b>&nbsp; 예상중량 <b style="color:#1565c0">' + fmt(r.wirePlan) + 'g</b>' +
+      '</div>';
+  }
+  if (mode === 'chain') {
+    return '<span class="row-arrow">›</span>' +
+      '<div class="row-title">' + r.meltNo + '</div>' +
+      '<div class="row-sub">' + (r.chainType||'-') + ' &nbsp;|&nbsp; ' + (r.wireType||'-') + '</div>' +
+      '<div class="row-info">' +
+        '선재후중량 <b style="color:#2e7d32">' + fmt(r.wireReal) + 'g</b>&nbsp; 계획 <b>' + fmt(r.chainPlan) + 'g</b>' +
+      '</div>';
+  }
+  if (mode === 'weld') {
+    return '<span class="row-arrow">›</span>' +
+      '<div class="row-title">' + r.meltNo + '</div>' +
+      '<div class="row-sub">' + (r.chainType||'-') + '</div>' +
+      '<div class="row-info">' +
+        '체인생산 <b>' + fmt(r.chainProd) + 'g</b>&nbsp; 해리 <b style="color:#e53935">' + fmt(r.haeri) + 'g</b>' +
+      '</div>';
+  }
+  var step = r.weldAfter ? '✅용접완료' : r.chainProd ? '⚙️기계완료' : r.wireReal ? '⚗️선재완료' : '📋대기';
+  return '<div class="row-title">' + r.meltNo + ' — ' + (r.wireType||'') + '</div>' +
+    '<div class="row-sub">' + (r.material||'') + ' ' + (r.content||'-') + '% &nbsp;|&nbsp; ' + step + '</div>' +
+    '<div class="row-info">' +
+      '선재 <b>' + fmt(r.wireReal) + 'g</b> → 체인 <b>' + fmt(r.chainProd) + 'g</b> → 해리 <b style="color:#e53935">' + fmt(r.haeri) + 'g</b> → 용접후 <b>' + fmt(r.weldAfter) + 'g</b>' +
+    '</div>';
+}
+
+
+function openWireGroupInp(meltNo, rows) {
+  S.inpMode = 'wire_group';
+  S.screenMode = '';
+  document.getElementById('saveBtn').style.display = '';
+  var _in = document.getElementById('inpNav'); if (_in) _in.style.display = 'none';
+  S.selRow = rows[0];
+  S.fields = {wireWeights: {}};
+  rows.forEach(function(r) { S.fields.wireWeights[r.rowNum] = 0; });
+
+  document.getElementById('inpTitle').textContent = '선재 실중량 입력';
+  document.getElementById('inpHdr').style.background = S.deptColor;
+  document.getElementById('inpBack').onclick = function() { openList('wire'); };
+  document.getElementById('inpBack').textContent = '← 뒤로';
+  var _icb2 = document.getElementById('inpChainBtn'); if (_icb2) _icb2.style.display = 'none';
+
+  var f = rows[0];
+  var html =
+    '<div class="inp-card"><div class="inp-label">용해번호</div><div class="inp-val" style="color:#1565c0">' + meltNo + '</div></div>' +
+    '<div class="inp-row">' +
+      '<div class="inp-card"><div class="inp-label">재질</div><div class="inp-val">' + (f.material||'-') + '</div></div>' +
+      '<div class="inp-card"><div class="inp-label">함량</div><div class="inp-val">' + (f.content||'-') + '%</div></div>' +
+    '</div>' +
+    '<div class="inp-card" style="background:#e8f5e9">' +
+      '<div class="inp-label">📋 투입 재료</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;font-size:13px">' +
+        '<div>순은 <b>' + fmt(f.silver) + 'g</b></div>' +
+        '<div>알로이 <b>' + fmt(f.alloy) + 'g</b></div>' +
+        '<div>연주로 <b>' + fmt(f.furnace) + 'g</b></div>' +
+        '<div>재말투입 <b>' + fmt(f.scrapUse) + 'g</b></div>' +
+        '<div>재말잔량 <b>' + fmt(f.scrapLeft) + 'g</b></div>' +
+        '<div>불량선재 <b>' + fmt(f.badWire) + 'g</b></div>' +
+      '</div>' +
+    '</div>';
+
+  // 선재 목록을 하나의 카드 안에 2열로 배치
+  html += '<div class="inp-card"><div class="inp-label" style="margin-bottom:10px">선재종류별 실중량 입력</div>';
+  rows.forEach(function(row) {
+    var fid = 'ww_' + row.rowNum;
+    html +=
+      '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0f0f0;">' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-size:16px;font-weight:700;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (row.wireType||'-') + '</div>' +
+          '<div style="font-size:12px;color:#888;margin-top:2px">예상 ' + fmt(row.wirePlan) + 'g</div>' +
+        '</div>' +
+        '<div class="inp-field grn" style="width:130px;flex-shrink:0;cursor:pointer" onclick="openKPWire(' + row.rowNum + ',' + JSON.stringify(row.wireType||'선재') + ')">' +
+          '<span class="fv" id="' + fid + '">0</span>' +
+          '<span class="fu" style="font-size:14px">g</span>' +
+        '</div>' +
+      '</div>';
+  });
+  html += '</div>';
+
+  document.getElementById('inpBody').innerHTML = html;
+  document.getElementById('saveBtn').onclick = function() {
+    var hasAny = Object.values(S.fields.wireWeights).some(function(v) { return v > 0; });
+    if (!hasAny) { toast('⚠️ 하나 이상 실중량을 입력해주세요', 2000, 'err'); return; }
+    requirePin(function() { doSaveWireGroup(rows); });
+  };
+  show('inpSc');
+}
+
+function openKPWire(rowNum, label) {
+  S.kpField = 'ww_' + rowNum;
+  S.kpVal = S.fields.wireWeights[rowNum] ? String(S.fields.wireWeights[rowNum]) : '';
+  document.getElementById('kpLbl').textContent = label + ' 실중량 (g)';
+  document.getElementById('kpDisp').textContent = fmtKp(S.kpVal);
+  document.getElementById('kpBg').classList.add('on');
+  document.getElementById('kpSheet').classList.add('on');
+}
+
+async function doSaveWireGroup(rows) {
+  var emp = S.user ? S.user.name : '미확인';
+  var meltNo = rows[0].meltNo;
+  var items = rows.map(function(row) {
+    return {rowNum: row.rowNum, weight: S.fields.wireWeights[row.rowNum] || 0};
+  }).filter(function(it) { return it.weight > 0; });
+  if (!items.length) { toast('⚠️ 입력된 실중량이 없습니다', 2000, 'err'); return; }
+
+  showLoad();
+  if (DEMO) {
+    await sleep(250); hideLoad();
+    applyWireLocal(items);
+    toast('✅ 저장 완료 (데모)', 1500, 'ok');
+    afterWireSave(meltNo); return;
+  }
+  try {
+    var r = await apiPost({action:'saveWires', empName:emp, items:items});
+    hideLoad();
+    if (r.success) {
+      applyWireLocal(items);                 // 서버 재조회 없이 즉시 반영(빠름)
+      toast('✅ 저장 완료 · 기계실로 전달됨', 1600, 'ok');
+      afterWireSave(meltNo);
+    } else {
+      toast('❌ 저장 실패: ' + (r.error||''), 2500, 'err');
+    }
+  } catch(e) { hideLoad(); toast('❌ 연결 오류', 2500, 'err'); }
+}
+
+// 방금 저장한 값을 로컬 데이터에 즉시 반영
+function applyWireLocal(items) {
+  items.forEach(function(it) {
+    for (var i = 0; i < S.rows.length; i++) {
+      if (S.rows[i].rowNum === it.rowNum) { S.rows[i].wireReal = it.weight; break; }
+    }
+  });
+}
+
+// 저장 후 입력 화면에 그대로 머무름(남은 선재만 다시 표시)
+function afterWireSave(meltNo) {
+  var remain = S.rows.filter(function(r) { return r.meltNo === meltNo && !r.wireReal; });
+  if (remain.length) {
+    openWireGroupInp(meltNo, remain);
+  } else {
+    toast('✅ 이 용해 선재 입력 완료', 1800, 'ok');
+    openList('wire');
+  }
+}
+
+function openInp(mode, row) {
+  var titles = {wire:'선재 후중량 입력', chain:'체인 생산중량 입력', weld:'용접 후중량 입력'};
+  document.getElementById('inpTitle').textContent = titles[mode] || '입력';
+  document.getElementById('inpHdr').style.background = S.deptColor;
+  document.getElementById('inpBack').onclick = function() { openList(mode); };
+  S.fields = {weight: 0};
+
+  var lbl = mode === 'wire' ? '선재 후중량 (g)' : mode === 'chain' ? '체인 생산중량 (g)' : '용접 후중량 (g)';
+  var info = '';
+
+  if (mode === 'wire') {
+    info =
+      '<div class="inp-card"><div class="inp-label">용해번호</div><div class="inp-val" style="color:#1565c0">' + row.meltNo + '</div></div>' +
+      '<div class="inp-row">' +
+        '<div class="inp-card"><div class="inp-label">재질</div><div class="inp-val">' + (row.material||'-') + '</div></div>' +
+        '<div class="inp-card"><div class="inp-label">함량</div><div class="inp-val">' + (row.content||'-') + '%</div></div>' +
+      '</div>' +
+      '<div class="inp-card"><div class="inp-label">선재 종류</div><div class="inp-val">' + (row.wireType||'-') + '</div></div>' +
+      '<div class="inp-card" style="background:#e8f5e9">' +
+        '<div class="inp-label">📋 투입 재료 (관리부 계획)</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;font-size:14px">' +
+          '<div>순은 <b>' + fmt(row.silver) + 'g</b></div>' +
+          '<div>알로이 <b>' + fmt(row.alloy) + 'g</b></div>' +
+          '<div>연주로잔량 <b>' + fmt(row.furnace) + 'g</b></div>' +
+          '<div>재말수령 <b>' + fmt(row.scrapRecv) + 'g</b></div>' +
+          '<div>재말투입 <b>' + fmt(row.scrapUse) + 'g</b></div>' +
+          '<div>재말잔량 <b>' + fmt(row.scrapLeft) + 'g</b></div>' +
+          '<div>불량선재 <b>' + fmt(row.badWire) + 'g</b></div>' +
+          '<div>예상중량 <b style="color:#1565c0">' + fmt(row.wirePlan) + 'g</b></div>' +
+        '</div>' +
+      '</div>';
+  } else if (mode === 'chain') {
+    info =
+      '<div class="inp-card"><div class="inp-label">용해번호</div><div class="inp-val" style="color:#1565c0">' + row.meltNo + '</div></div>' +
+      '<div class="inp-row">' +
+        '<div class="inp-card"><div class="inp-label">선재 종류</div><div class="inp-val">' + (row.wireType||'-') + '</div></div>' +
+        '<div class="inp-card"><div class="inp-label">선재 후중량</div><div class="inp-val" style="color:#2e7d32">' + fmt(row.wireReal) + 'g</div></div>' +
+      '</div>' +
+      '<div class="inp-row">' +
+        '<div class="inp-card"><div class="inp-label">체인 종류</div><div class="inp-val">' + (row.chainType||'-') + '</div></div>' +
+        '<div class="inp-card"><div class="inp-label">계획중량</div><div class="inp-val" style="color:#888">' + fmt(row.chainPlan) + 'g</div></div>' +
+      '</div>' +
+      '<div class="inp-card" style="background:#fff8e1"><div class="inp-label">💡 해리 = 선재후중량 − 체인생산중량 (자동계산)</div></div>';
+  } else {
+    info =
+      '<div class="inp-card"><div class="inp-label">용해번호</div><div class="inp-val" style="color:#1565c0">' + row.meltNo + '</div></div>' +
+      '<div class="inp-row">' +
+        '<div class="inp-card"><div class="inp-label">체인 종류</div><div class="inp-val">' + (row.chainType||'-') + '</div></div>' +
+        '<div class="inp-card"><div class="inp-label">체인 생산중량</div><div class="inp-val" style="color:#888">' + fmt(row.chainProd) + 'g</div></div>' +
+      '</div>' +
+      '<div class="inp-card" style="background:#fff8e1"><div class="inp-label">💡 용접약이 붙어 중량이 늘어납니다</div></div>';
+  }
+
+  info += '<div class="inp-card" onclick="openKP(\'weight\',\'' + lbl + '\')">' +
+    '<div class="inp-label">' + lbl + '</div>' +
+    '<div class="inp-field grn"><span class="fv" id="v_weight">0</span><span class="fu">g</span></div>' +
+    '</div>';
+
+  document.getElementById('inpBody').innerHTML = info;
+  document.getElementById('saveBtn').onclick = function() {
+    if (!S.fields.weight) { toast('⚠️ 중량을 입력해주세요', 2000, 'err'); return; }
+    requirePin(function() { doSave(mode); });
+  };
+  show('inpSc');
+}
+
+async function doSave(mode) {
+  showLoad();
+  var emp = S.user ? S.user.name : '미확인';
+  var row = S.selRow;
+  var payload = {empName:emp, rowNum:row.rowNum, weight:S.fields.weight};
+  var msg = '✅ 저장 완료';
+
+  if (DEMO) { await sleep(600); hideLoad(); toast(msg + ' (데모)', 3000, 'ok'); setTimeout(goMenu, 2200); return; }
+  try {
+    var action = mode === 'wire' ? 'saveWire' : mode === 'chain' ? 'saveChain' : 'saveWeld';
+    payload.action = action;
+    var r = await apiPost(payload);
+    hideLoad();
+    if (r.success) { toast(msg, 3000, 'ok'); setTimeout(goMenu, 2200); }
+    else toast('❌ 저장 실패: ' + (r.error||''), 3000, 'err');
+  } catch(e) { hideLoad(); toast('❌ 연결 오류', 3000, 'err'); }
+}
+
+function buildKpGrid() {
+  var g = document.getElementById('kpGrid');
+  ['1','2','3','4','5','6','7','8','9','del','0','.'].forEach(function(k) {
+    var b = document.createElement('button');
+    b.className = 'nk' + (k === 'del' ? ' del' : '');
+    b.textContent = k === 'del' ? '⌫' : k;
+    b.ontouchstart = function(e) { e.preventDefault(); kpPress(k); };
+    b.onclick = function() { kpPress(k); };
+    g.appendChild(b);
+  });
+  var ok = document.createElement('button');
+  ok.className = 'nk ok kp-ok'; ok.textContent = '✓ 확인';
+  ok.ontouchstart = function(e) { e.preventDefault(); closeKP(); };
+  ok.onclick = closeKP;
+  g.appendChild(ok);
+}
+function fmtKp(v) {
+  var parts = (v || '0').split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return parts.join('.');
+}
+function kpPress(k) {
+  if (k === 'del') S.kpVal = S.kpVal.slice(0,-1);
+  else if (k === '.') { if (!S.kpVal.includes('.')) S.kpVal += '.'; }
+  else if (S.kpVal.length < 9) S.kpVal += k;
+  document.getElementById('kpDisp').textContent = fmtKp(S.kpVal);
+}
+function openKP(field, label) {
+  S.kpField = field; S.kpVal = S.fields[field] ? String(S.fields[field]) : '';
+  document.getElementById('kpLbl').textContent = label;
+  document.getElementById('kpDisp').textContent = fmtKp(S.kpVal);
+  document.getElementById('kpBg').classList.add('on');
+  document.getElementById('kpSheet').classList.add('on');
+}
+function hideKpSheet() {
+  document.getElementById('kpBg').classList.remove('on');
+  document.getElementById('kpSheet').classList.remove('on');
+}
+function cancelKP() { hideKpSheet(); }   // 값 반영 없이 닫기 — '✓확인'을 눌러야만 입력 반영
+function closeKP() {
+  var v = parseFloat(S.kpVal) || 0;
+  if (S.kpField.indexOf('chk_') === 0) {            // 기계실 측정중량 → 필드에 표시
+    var cno = S.kpField.slice(4);
+    var px = S.pendMap[cno];
+    var claimed = px ? (parseFloat(px.claimed) || 0) : 0;
+    if (v > 0 && claimed > 0 && Math.abs(v - claimed) > claimed * 0.05) {
+      hideKpSheet();
+      var src = (S.checkKind === 'chain') ? '기계실' : '자재실';
+      toast('🚫 ' + src + ' 신고 ' + fmt(claimed) + 'g · 측정 ' + fmt(v) + 'g — 5% 초과, 다시 측정하세요', 4200, 'err');
+      return;
+    }
+    S.checkVals[cno] = v;
+    var ce = document.getElementById('chk_' + cno);
+    if (ce) ce.textContent = fmt(v);
+    hideKpSheet();
+    return;
+  }
+  if (S.kpField.indexOf('prod_') === 0) {           // 체인 생산중량/용접 후중량(필드 표시)
+    var pno = S.kpField.slice(5);
+    S.prodVals[pno] = v;
+    var pce = document.getElementById('pv_' + pno);
+    if (pce) pce.textContent = fmt(v);
+    hideKpSheet();
+    return;
+  }
+  if (S.kpField.indexOf('use_') === 0) {            // 로트 투입 사용량
+    var no = S.kpField.slice(4);
+    var lot = S.availMap[no];
+    if (v <= 0) { delete S.basket[no]; }
+    else { if (lot && v > lot.left) v = lot.left; S.basket[no] = {lot:lot, used:v}; }
+    hideKpSheet(); renderLotAvail(); renderBasket(); return;
+  }
+  if (S.kpField === 'prodWeight') {                 // 체인생산/용접후중량
+    S.fields.prodWeight = v; hideKpSheet(); renderBasket(); return;
+  }
+  if (S.kpField.indexOf('ww_') === 0) {
+    var rowNum = parseInt(S.kpField.replace('ww_', ''));
+    if (S.fields.wireWeights) S.fields.wireWeights[rowNum] = v;
+    var el = document.getElementById(S.kpField);
+    if (el) el.textContent = fmt(v);
+  } else {
+    S.fields[S.kpField] = v;
+    var el2 = document.getElementById('v_' + S.kpField);
+    if (el2) el2.textContent = fmt(v);
+  }
+  hideKpSheet();
+}
+
+function buildNpad(id, cb) {
+  var el = document.getElementById(id); el.innerHTML = '';
+  ['1','2','3','4','5','6','7','8','9','del','0','ok'].forEach(function(k) {
+    var b = document.createElement('button');
+    b.className = 'nk' + (k === 'del' ? ' del' : k === 'ok' ? ' ok' : '');
+    b.textContent = k === 'del' ? '⌫' : k === 'ok' ? '확인' : k;
+    b.ontouchstart = function(e) { e.preventDefault(); cb(k); };
+    b.onclick = function() { cb(k); };
+    el.appendChild(b);
+  });
+}
+function renderDots(id, n) {
+  var el = document.getElementById(id); el.innerHTML = '';
+  for (var i = 0; i < 4; i++) {
+    var d = document.createElement('div');
+    d.className = 'pin-dot' + (i < n ? ' on' : '');
+    el.appendChild(d);
+  }
+}
+function requirePin(cb) {
+  S.personalPin = ''; S.personalCB = cb;
+  renderDots('pinDots', 0);
+  document.getElementById('pinOvl').classList.add('on');
+}
+function closePinOvl() {
+  document.getElementById('pinOvl').classList.remove('on');
+  S.personalPin = '';
+}
+function pinKey(k) {
+  if (k === 'del') { S.personalPin = S.personalPin.slice(0,-1); renderDots('pinDots', S.personalPin.length); }
+  else if (k === 'ok') { doPinVerify(); }
+  else if (S.personalPin.length < 4) {
+    S.personalPin += k; renderDots('pinDots', S.personalPin.length);
+    if (S.personalPin.length === 4) setTimeout(doPinVerify, 200);
+  }
+}
+async function doPinVerify() {
+  if (!S.personalPin.length) return;
+  showLoad();
+  var result = null;
+  if (DEMO) {
+    await sleep(350);
+    var m = {1111:'홍길동',2222:'김영수',3333:'이순자',4444:'박민준'};
+    var n = m[+S.personalPin];
+    result = n ? {success:true, name:n} : {success:false};
+  } else {
+    try { result = await apiGet('verifyEmp', {pin:S.personalPin, dept:S.dept}); }
+    catch(e) { result = {success:false}; }
+  }
+  hideLoad();
+  if (result && result.success) {
+    S.user = result;
+    document.getElementById('pinOvl').classList.remove('on');
+    S.personalPin = '';
+    if (S.personalCB) S.personalCB();
+  } else {
+    toast('❌ 비밀번호 오류 (데모: 1111/2222)', 2500, 'err');
+    S.personalPin = ''; renderDots('pinDots', 0);
+  }
+}
+
+async function apiGet(action, params) {
+  var api = window._fbApi;
+  if (action === 'getRows')          return { data: await api.fbGetRows(params.dept||'') };
+  if (action === 'verifyDept')       return api.fbVerifyDept(params.code, params.pw);
+  if (action === 'verifyEmp')        return api.fbVerifyEmp(params.pin, params.dept);
+  if (action === 'getPendingWires')  return { data: await api.fbGetPendingWires() };
+  if (action === 'getPendingChains') return { data: await api.fbGetPendingChains() };
+  if (action === 'getWireLots')      return { data: await api.fbGetWireLots() };
+  if (action === 'getChainLots')     return { data: await api.fbGetChainLots() };
+  if (action === 'getInventory')     return api.fbGetInventory();
+  throw new Error('Unknown action: ' + action);
+}
+async function apiPost(data) {
+  var api = window._fbApi;
+  var act = data.action;
+  if (act === 'saveWire')        return api.fbSaveWire(data.rowNum, data.weight, data.empName);
+  if (act === 'saveWires')       return api.fbSaveWires(data.items, data.empName);
+  if (act === 'saveChain')       return api.fbSaveWire(data.rowNum, data.weight, data.empName);
+  if (act === 'saveWeld')        return api.fbSaveWire(data.rowNum, data.weight, data.empName);
+  if (act === 'confirmWires')    return api.fbConfirmWires(data.items, data.empName);
+  if (act === 'confirmChains')   return api.fbConfirmChains(data.items, data.empName);
+  if (act === 'saveChainsBatch') return api.fbSaveChainsBatch(data.items, data.empName);
+  if (act === 'saveWeldsBatch')  return api.fbSaveWeldsBatch(data.items, data.empName);
+  if (act === 'cancelLot')       return api.fbCancelLot(data.kind, data.no, data.restore);
+  throw new Error('Unknown action: ' + act);
+}
+
+function toast(msg, dur, type) {
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast on' + (type ? ' ' + type : '');
+  setTimeout(function() { t.classList.remove('on'); }, dur || 2000);
+}
+function showLoad() { document.getElementById('loading').classList.add('on'); }
+function hideLoad() { document.getElementById('loading').classList.remove('on'); }
+function sleep(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
+
+function demoRows() {
+  var dk = new Date().toISOString().split('T')[0];
+  return [
+    {rowNum:2,date:dk,meltNo:'MELT-001',material:'순은',content:'92.5',silver:3000,alloy:150,furnace:200,scrapRecv:500,scrapUse:300,scrapLeft:200,badWire:80,wireType:'1.0mm 순은선',wirePlan:2800,chainType:'FC-80',chainPlan:800,wireReal:0,chainProd:0,haeri:0,weldAfter:0},
+    {rowNum:3,date:dk,meltNo:'MELT-001',material:'순은',content:'92.5',silver:3000,alloy:150,furnace:200,scrapRecv:500,scrapUse:300,scrapLeft:200,badWire:80,wireType:'0.8mm 순은선',wirePlan:1100,chainType:'FC-100',chainPlan:1200,wireReal:1080,chainProd:0,haeri:0,weldAfter:0},
+    {rowNum:4,date:dk,meltNo:'MELT-002',material:'알로이',content:'75.0',silver:0,alloy:500,furnace:100,scrapRecv:800,scrapUse:600,scrapLeft:200,badWire:50,wireType:'1.2mm 알로이선',wirePlan:1050,chainType:'SC-60',chainPlan:600,wireReal:1020,chainProd:990,haeri:30,weldAfter:0},
+  ];
+}
+
+// ============================================================
+// ★ 선재/체인 로트 투입 (번호검색 + 투입바구니) — v3
+// ============================================================
+function setNav(prefix, aLabel, aFn, bLabel, bFn, activeSide) {
+  var nav = document.getElementById(prefix + 'Nav'); if (!nav) return;
+  var a = document.getElementById(prefix + 'NavA');
+  var b = document.getElementById(prefix + 'NavB');
+  nav.style.display = 'flex';
+  a.textContent = aLabel; a.onclick = aFn; a.className = 'navtab' + (activeSide === 'a' ? ' active' : '');
+  b.textContent = bLabel; b.onclick = bFn; b.className = 'navtab' + (activeSide === 'b' ? ' active' : '');
+}
+function indexAvail() { S.availMap = {}; S.avail.forEach(function(l) { S.availMap[l.no] = l; }); }
+function availSig(list) { return (list || []).map(function(l) { return l.no + ':' + l.left + ':' + (l.status||''); }).join('|'); }
+
+// 다음 공정 최신화: 새로고침 버튼/자동(12초)에서 호출. 변경 있을 때만 다시 그림
+async function reloadLots(silent) {
+  var sc = document.getElementById('lotSc');
+  if (!sc || !sc.classList.contains('active')) return;
+  if (!silent) showLoad();
+  try {
+    var act = S.lotKind === 'chain' ? 'getWireLots' : 'getChainLots';
+    var r = await apiGet(act, {});
+    var data = r.data || [];
+    var sig = availSig(data);
+    if (sig !== S._availSig) {
+      S._availSig = sig;
+      S.avail = data;
+      indexAvail();
+      Object.keys(S.basket).forEach(function(no) { if (!S.availMap[no]) S.availMap[no] = S.basket[no].lot; });
+      renderLotAvail(); renderBasket();
+      if (silent) toast('🔄 새 항목이 들어왔어요', 1500, 'ok');
+    }
+  } catch(e) {}
+  if (!silent) hideLoad();
+}
+
+async function openChainProd() {
+  S.lotKind = 'chain'; S.basket = {}; S.fields = {prodWeight:0};
+  document.getElementById('lotTitle').textContent = '체인 생산 · 선재 투입';
+  document.getElementById('lotHdr').style.background = S.deptColor;
+  var _lb = document.getElementById('lotBack'); _lb.onclick = goHome; _lb.textContent = '← 홈';
+  var _cb = document.getElementById('lotCheckBtn'); if (_cb) _cb.style.display = 'none';
+  setNav('lot', '📥 선재 입고확인', openWireCheck, '⛓️ 체인생산', function(){}, 'b');
+  S.prodVals = {};
+  document.getElementById('lotBasket').style.display = 'none';   // 투입량 선택 없음
+  document.getElementById('lotSaveBtn').style.display = '';
+  document.getElementById('lotSaveBtn').textContent = '💾 체인 생산 저장';
+  var sb = document.getElementById('lotSearch'); sb.value = ''; sb.placeholder = '🔍 선재번호 검색';
+  document.getElementById('lotSaveBtn').onclick = submitProduce;
+  showLoad();
+  if (DEMO) { await sleep(400); S.avail = demoWireLots(); }
+  else { try { var r = await apiGet('getWireLots', {}); S.avail = r.data || []; } catch(e) { S.avail = demoWireLots(); } }
+  hideLoad();
+  indexAvail(); S._availSig = availSig(S.avail); renderLotAvail(); renderBasket();
+  show('lotSc');
+}
+
+async function openWeldProd() {
+  S.lotKind = 'weld'; S.basket = {}; S.fields = {prodWeight:0};
+  document.getElementById('lotTitle').textContent = '용접 · 체인 투입';
+  document.getElementById('lotHdr').style.background = S.deptColor;
+  var _lb = document.getElementById('lotBack'); _lb.onclick = goHome; _lb.textContent = '← 홈';
+  var _cb = document.getElementById('lotCheckBtn'); if (_cb) _cb.style.display = 'none';
+  setNav('lot', '📥 체인 입고확인', openChainCheck, '🔥 용접작업', function(){}, 'b');
+  S.prodVals = {};
+  document.getElementById('lotBasket').style.display = 'none';   // 투입량 선택 없음
+  document.getElementById('lotSaveBtn').style.display = '';
+  document.getElementById('lotSaveBtn').textContent = '💾 용접 저장';
+  var sb = document.getElementById('lotSearch'); sb.value = ''; sb.placeholder = '🔍 체인번호 검색';
+  document.getElementById('lotSaveBtn').onclick = submitProduce;
+  showLoad();
+  if (DEMO) { await sleep(400); S.avail = demoChainLots(); }
+  else { try { var r = await apiGet('getChainLots', {}); S.avail = r.data || []; } catch(e) { S.avail = demoChainLots(); } }
+  hideLoad();
+  indexAvail(); S._availSig = availSig(S.avail); renderLotAvail(); renderBasket();
+  show('lotSc');
+}
+
+function renderProduceList(box, list) {
+  var isChain = S.lotKind === 'chain';
+  if (!list.length) {
+    box.innerHTML = '<div class="empty"><div class="eico">📭</div><div class="etxt">' + (isChain ? '생산할 선재가 없습니다' : '용접할 체인이 없습니다') + '</div></div>';
+    return;
+  }
+  var head = isChain ? '입고확인된 선재 · 체인 생산중량 입력 (들어온 선재 전량)' : '입고확인된 체인 · 용접 후중량 입력 (넘어온 체인 전량)';
+  var html = '<div class="inp-card"><div class="inp-label" style="margin-bottom:8px">' + head + '</div>';
+  list.forEach(function(l) {
+    var active = (l.status === undefined) || (l.status === '사용가능');
+    var cur = (S.prodVals && S.prodVals[l.no]) || 0;
+    var spec = '';
+    if (isChain) {
+      var sp = [];
+      if (l.chainLen) sp.push('길이 ' + l.chainLen);
+      if (l.chainWt) sp.push('중량 ' + fmt(l.chainWt) + 'g');
+      spec = sp.length ? sp.join(' · ') + ' · ' : '';
+    }
+    var lenTxt = (isChain && l.chainLen !== '' && l.chainLen != null) ? '<span style="color:#888;font-weight:400;margin-left:16px">' + l.chainLen + 'm</span>' : '';
+    var mainTxt = isChain ? ((l.wtype||'-') + '  →  ' + (l.chainType||'-') + lenTxt) : (l.chainType||'-');
+    var subTxt = isChain ? ('선재 ' + fmt(l.left) + 'g · ' + l.no) : ('번호 ' + l.no + ' · 체인 ' + fmt(l.left) + 'g');
+    var right = active
+      ? '<div class="inp-field grn" style="width:140px;flex-shrink:0;cursor:pointer" onclick="openProduceKP(\'' + l.no + '\')"><span class="fv" id="pv_' + l.no + '">' + fmt(cur) + '</span><span class="fu" style="font-size:14px">g</span></div>'
+      : '<div style="width:140px;flex-shrink:0;text-align:right;color:#e69500;font-weight:700;font-size:13px">입고확인 대기</div>';
+    html += '<div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #f0f0f0' + (active ? '' : ';opacity:.5') + '">' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:16px;font-weight:700;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + mainTxt + '</div>' +
+        '<div style="font-size:12px;color:#888;margin-top:2px">' + subTxt + '</div>' +
+      '</div>' + right +
+    '</div>';
+  });
+  html += '</div>';
+  box.innerHTML = html;
+}
+function renderLotAvail() {
+  var sb = document.getElementById('lotSearch');
+  var q = (sb && sb.value || '').trim();
+  var box = document.getElementById('lotAvail'); box.innerHTML = '';
+  var list = (S.avail || []).filter(function(l) { return !q || String(l.no).indexOf(q) >= 0; });
+  if (S.lotKind === 'chain' || S.lotKind === 'weld') { renderProduceList(box, list); return; }   // 체인생산·용접 인라인 입력
+  if (!list.length) {
+    box.innerHTML = '<div class="empty"><div class="eico">📭</div><div class="etxt">사용 가능한 항목이 없습니다</div></div>';
+    return;
+  }
+  list.forEach(function(l) {
+    var inb = !!S.basket[l.no];
+    var active = (l.status === undefined) || (l.status === '사용가능');   // 입고확인 완료만 활성
+    var mainTxt, refTxt;
+    if (S.lotKind === 'chain') {
+      mainTxt = (l.wtype||'-') + '  →  ' + (l.chainType||'-');   // 선재 → 만들 체인
+      refTxt  = '번호 ' + l.no + (l.cont ? '  ·  ' + l.cont + '%' : '');
+    } else {
+      mainTxt = (l.chainType||'-');
+      refTxt  = '번호 ' + l.no + (l.melt ? '  ·  ' + l.melt : '');
+    }
+    var rightTxt = !active
+      ? '<span style="color:#e69500;font-weight:700">입고확인 대기</span>'
+      : (inb ? ('투입 ' + fmt(S.basket[l.no].used) + 'g') : ('잔량 ' + fmt(l.left) + 'g'));
+    var c = document.createElement('div');
+    c.className = 'lot-card' + (inb ? ' sel' : '') + (active ? '' : ' lock');
+    c.innerHTML =
+      '<div style="min-width:0"><div class="ln">' + mainTxt + (inb ? ' ✅' : '') + '</div><div class="ls">' + refTxt + '</div></div>' +
+      '<div class="lr">' + rightTxt + '</div>';
+    if (active) c.onclick = function() { openUseKP(l.no); };
+    else c.onclick = function() { toast('🔒 입고확인이 되어야 활성화됩니다', 1800, 'err'); };
+    box.appendChild(c);
+  });
+}
+
+function openProduceKP(no) {
+  var lot = S.availMap[no]; if (!lot) return;
+  var isChain = S.lotKind === 'chain';
+  S.kpField = 'prod_' + no;
+  S.kpVal = (S.prodVals && S.prodVals[no]) ? String(S.prodVals[no]) : '';
+  document.getElementById('kpLbl').textContent = isChain
+    ? ((lot.wtype||'') + ' → ' + (lot.chainType||'') + ' / 체인 생산중량(g)')
+    : ((lot.chainType||'') + ' · ' + no + ' / 용접 후중량(g)');
+  document.getElementById('kpDisp').textContent = fmtKp(S.kpVal);
+  document.getElementById('kpBg').classList.add('on');
+  document.getElementById('kpSheet').classList.add('on');
+}
+function submitProduce() {
+  var isChain = S.lotKind === 'chain';
+  var items = [];
+  Object.keys(S.prodVals || {}).forEach(function(no) {
+    if (S.prodVals[no] > 0) items.push({no:no, weight:S.prodVals[no]});
+  });
+  if (!items.length) { toast(isChain ? '⚠️ 체인 생산중량을 입력하세요' : '⚠️ 용접 후중량을 입력하세요', 2000, 'err'); return; }
+  if (S.user) doSubmitProduce(items); else requirePin(function() { doSubmitProduce(items); });
+}
+async function doSubmitProduce(items) {
+  var isChain = S.lotKind === 'chain';
+  showLoad();
+  var emp = S.user ? S.user.name : '미확인';
+  if (DEMO) { await sleep(500); hideLoad(); toast('✅ ' + items.length + '건 저장 (데모)', 1800, 'ok'); if (isChain) openChainProd(); else openWeldProd(); return; }
+  try {
+    var act = isChain ? 'saveChainsBatch' : 'saveWeldsBatch';
+    var r = await apiPost({action:act, items:items, empName:emp});
+    hideLoad();
+    if (r.success) {
+      var extra = isChain ? (r.haeriSum != null ? ' · 해리 ' + fmt(r.haeriSum) + 'g' : '') : (r.incSum != null ? ' · 증가 ' + fmt(r.incSum) + 'g' : '');
+      var done = {}; items.forEach(function(it) { done[it.no] = 1; });
+      S.avail = (S.avail || []).filter(function(l) { return !done[l.no]; });   // 재조회 없이 즉시 반영
+      indexAvail(); S.prodVals = {}; S._availSig = availSig(S.avail); renderLotAvail();
+      toast('✅ ' + (isChain ? '체인' : '용접') + ' ' + r.made + '건 완료' + extra, 2800, 'ok');
+    }
+    else toast('❌ ' + (r.error || '실패'), 2500, 'err');
+  } catch(e) { hideLoad(); toast('❌ 연결 오류', 2500, 'err'); }
+}
+function openUseKP(no) {
+  var lot = S.availMap[no]; if (!lot) return;
+  S.kpField = 'use_' + no;
+  S.kpVal = String(S.basket[no] ? S.basket[no].used : lot.left);
+  var sz = S.lotKind === 'chain' ? (lot.wtype||'') : (lot.chainType||'');
+  document.getElementById('kpLbl').textContent = (sz ? sz + ' · ' : '') + no + ' 사용량(g) · 잔량 ' + fmt(lot.left) + 'g';
+  document.getElementById('kpDisp').textContent = fmtKp(S.kpVal);
+  document.getElementById('kpBg').classList.add('on');
+  document.getElementById('kpSheet').classList.add('on');
+}
+
+function openProdKP() {
+  S.kpField = 'prodWeight';
+  S.kpVal = S.fields.prodWeight ? String(S.fields.prodWeight) : '';
+  document.getElementById('kpLbl').textContent = (S.lotKind === 'chain' ? '체인 생산중량 (g)' : '용접 후중량 (g)');
+  document.getElementById('kpDisp').textContent = fmtKp(S.kpVal);
+  document.getElementById('kpBg').classList.add('on');
+  document.getElementById('kpSheet').classList.add('on');
+}
+
+function removeBasket(no) { delete S.basket[no]; renderLotAvail(); renderBasket(); }
+
+function renderBasket() {
+  var b = document.getElementById('lotBasket');
+  var keys = Object.keys(S.basket);
+  var sum = 0; keys.forEach(function(k) { sum += S.basket[k].used; });
+  var prodLbl = S.lotKind === 'chain' ? '체인 생산중량' : '용접 후중량';
+  var prod = S.fields.prodWeight || 0;
+  var html = '<div class="bt">투입 목록 (' + keys.length + ')</div>';
+  if (!keys.length) html += '<div style="color:#bbb;font-size:14px;padding:6px 0">위 목록에서 번호를 눌러 추가하세요</div>';
+  keys.forEach(function(k) {
+    var lot = S.basket[k].lot || {};
+    var sz = S.lotKind === 'chain' ? (lot.wtype||'') : (lot.chainType||'');
+    var lab = (sz ? sz + ' ' : '') + '<span style="color:#999;font-size:13px">(' + k + ')</span>';
+    html += '<div class="bchip"><span>' + lab + ' &nbsp;<b>' + fmt(S.basket[k].used) + 'g</b></span><span class="bx" onclick="removeBasket(\'' + k + '\')">✕</span></div>';
+  });
+  html += '<div class="bsum"><span>투입 합계</span><span>' + fmt(sum) + 'g</span></div>';
+  html += '<div class="bfield" onclick="openProdKP()"><span style="font-size:14px;color:#777">' + prodLbl + '</span><span class="bfv">' + fmt(prod) + 'g</span></div>';
+  if (prod > 0 && keys.length) {
+    if (S.lotKind === 'chain') html += '<div class="bcalc">해리 = 투입 − 생산 = <b style="color:#e53935">' + fmt(sum - prod) + 'g</b></div>';
+    else html += '<div class="bcalc">증가량(용접약) = <b style="color:#2e7d32">' + fmt(prod - sum) + 'g</b></div>';
+  }
+  b.innerHTML = html;
+}
+
+function submitChain() {
+  if (!Object.keys(S.basket).length) { toast('⚠️ 선재를 1개 이상 투입하세요', 2000, 'err'); return; }
+  if (!S.fields.prodWeight) { toast('⚠️ 체인 생산중량을 입력하세요', 2000, 'err'); return; }
+  requirePin(function() { doSaveChainProd(); });
+}
+async function doSaveChainProd() {
+  showLoad();
+  var inputs = Object.keys(S.basket).map(function(k) { return {no:k, used:S.basket[k].used}; });
+  var emp = S.user ? S.user.name : '미확인';
+  if (DEMO) { await sleep(600); hideLoad(); toast('✅ 체인 생산 저장 (데모)', 1800, 'ok'); setTimeout(openChainProd, 1500); return; }
+  try {
+    var r = await apiPost({action:'saveChainProd', inputs:inputs, prodWeight:S.fields.prodWeight, empName:emp});
+    hideLoad();
+    if (r.success) { toast('✅ ' + r.chainNo + ' 저장 · 해리 ' + fmt(r.haeri) + 'g · 용접실로 전달', 2200, 'ok'); setTimeout(openChainProd, 1300); }
+    else toast('❌ ' + (r.error || '저장 실패'), 3000, 'err');
+  } catch(e) { hideLoad(); toast('❌ 연결 오류', 3000, 'err'); }
+}
+
+function submitWeld() {
+  if (!Object.keys(S.basket).length) { toast('⚠️ 체인을 1개 이상 투입하세요', 2000, 'err'); return; }
+  if (!S.fields.prodWeight) { toast('⚠️ 용접 후중량을 입력하세요', 2000, 'err'); return; }
+  requirePin(function() { doSaveWeldLot(); });
+}
+async function doSaveWeldLot() {
+  showLoad();
+  var inputs = Object.keys(S.basket).map(function(k) { return {no:k, used:S.basket[k].used}; });
+  var emp = S.user ? S.user.name : '미확인';
+  if (DEMO) { await sleep(600); hideLoad(); toast('✅ 용접 저장 (데모)', 1800, 'ok'); setTimeout(openWeldProd, 1500); return; }
+  try {
+    var r = await apiPost({action:'saveWeldLot', inputs:inputs, weldWeight:S.fields.prodWeight, empName:emp});
+    hideLoad();
+    if (r.success) { toast('✅ ' + r.weldNo + ' 저장 완료', 1800, 'ok'); setTimeout(openWeldProd, 1200); }
+    else toast('❌ ' + (r.error || '저장 실패'), 3000, 'err');
+  } catch(e) { hideLoad(); toast('❌ 연결 오류', 3000, 'err'); }
+}
+
+// ── 관리부 재고/현황 ──
+async function openInventory() {
+  document.getElementById('listTitle').textContent = '재고 · 생산현황';
+  document.getElementById('listHdr').style.background = S.deptColor;
+  var _lib = document.getElementById('listBack'); _lib.onclick = goHome; _lib.textContent = '← 홈';
+  showLoad();
+  var inv;
+  if (DEMO) {
+    await sleep(400);
+    inv = {wires:demoWireLots(), chains:demoChainLots(),
+      welds:[{no:'260515-001-Z1', inputs:'260515-001-C1:780', inSum:780, weld:812, inc:32, emp:'이순자', ts:''}]};
+  } else {
+    try { inv = await apiGet('getInventory', {}); } catch(e) { inv = {wires:[], chains:[], welds:[]}; }
+  }
+  hideLoad();
+  var b = document.getElementById('listBody'); b.innerHTML = '';
+  function active(x) { var st = x.status || '사용가능'; return ['사용가능','취소','검수대기','불일치'].indexOf(st) >= 0; }
+  b.appendChild(invCardSection('⚗️ 선재 재고', 'wire', (inv.wires || []).filter(active)));
+  b.appendChild(invCardSection('⛓️ 체인 재고', 'chain', (inv.chains || []).filter(active)));
+  b.appendChild(invSection('✅ 용접 이력', (inv.welds || []).map(function(x) {
+    return x.no + ' — 용접후 ' + fmt(x.weld) + 'g (용접약 +' + fmt(x.inc) + 'g) · ' + (x.emp||'');
+  })));
+  show('listSc');
+}
+
+// 취소/복구 버튼 포함 재고 카드
+function invCardSection(title, kind, list) {
+  var wrap = document.createElement('div');
+  var h = '<div class="row-title" style="margin:8px 0 8px">' + title + ' (' + list.length + ')</div>';
+  if (!list.length) h += '<div style="color:#bbb;font-size:14px;margin-bottom:12px">항목 없음</div>';
+  list.forEach(function(x) {
+    var st = x.status || '사용가능';
+    var cancelled = (st === '취소');
+    var badge = (st === '사용가능') ? ''
+      : ' <span style="color:' + (st === '검수대기' ? '#e69500' : '#c62828') + '">· ' + st + '</span>';
+    var info = (kind === 'wire')
+      ? (x.no + ' · ' + (x.wtype||'') + ' · 잔량 ' + fmt(x.left) + 'g')
+      : (x.no + ' · ' + (x.ctype||'') + ' · 잔량 ' + fmt(x.left) + 'g · 해리 ' + fmt(x.haeri) + 'g');
+    var btn = cancelled
+      ? '<button class="invbtn rs" onclick="lotRestore(\'' + kind + '\',\'' + x.no + '\')">↩ 복구</button>'
+      : '<button class="invbtn cx" onclick="lotCancel(\'' + kind + '\',\'' + x.no + '\')">🗑 취소</button>';
+    h += '<div class="row-card" style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;padding:12px 14px;border-left-color:' + S.deptColor + (cancelled ? ';opacity:.5' : '') + '">' +
+         '<div style="font-size:14px;color:#333;min-width:0">' + info + badge + '</div>' + btn + '</div>';
+  });
+  wrap.innerHTML = h; return wrap;
+}
+
+function lotCancel(kind, no) { requirePin(function() { sendCancel(kind, no, false); }); }
+function lotRestore(kind, no) { sendCancel(kind, no, true); }
+async function sendCancel(kind, no, restore) {
+  showLoad();
+  if (DEMO) { await sleep(300); hideLoad(); toast(restore ? '↩ 복구됨 (데모)' : '🗑 취소됨 (데모)', 1500, 'ok'); openInventory(); return; }
+  try {
+    var emp = S.user ? S.user.name : '관리부';
+    var r = await apiPost({action:'cancelLot', kind:kind, no:no, restore:restore, empName:emp});
+    hideLoad();
+    if (r.success) { toast(restore ? '↩ 복구되었습니다' : '🗑 취소되었습니다', 1600, 'ok'); openInventory(); }
+    else toast('❌ ' + (r.error || '실패'), 2500, 'err');
+  } catch(e) { hideLoad(); toast('❌ 연결 오류', 2500, 'err'); }
+}
+function invSection(title, lines) {
+  var wrap = document.createElement('div');
+  var h = '<div class="row-title" style="margin:8px 0 8px">' + title + '</div>';
+  if (!lines.length) h += '<div style="color:#bbb;font-size:14px;margin-bottom:12px">항목 없음</div>';
+  else lines.forEach(function(t) {
+    h += '<div class="row-card" style="border-left-color:' + S.deptColor + ';margin-bottom:8px;padding:12px 14px"><div style="font-size:15px;color:#333">' + t + '</div></div>';
+  });
+  wrap.innerHTML = h; return wrap;
+}
+
+function demoWireLots() {
+  return [
+    {no:'260515-001-W1', melt:'260515-001', wtype:'1.4mm 순은선', mat:'은', cont:'95', left:1000, chainType:'FC-80', chainLen:'45', chainWt:980},
+    {no:'260515-001-W2', melt:'260515-001', wtype:'0.8mm 순은선', mat:'은', cont:'95', left:2000, chainType:'FC-100', chainLen:'50', chainWt:1950},
+    {no:'260515-001-W1-R1', melt:'260515-001', wtype:'1.4mm 순은선', mat:'은', cont:'95', left:350, chainType:'FC-80', chainLen:'45', chainWt:980}
+  ];
+}
+function demoChainLots() {
+  return [
+    {no:'260515-001-C1', melt:'260515-001', chainType:'FC-80', left:780, haeri:20},
+    {no:'260515-001-C2', melt:'260515-001', chainType:'FC-100', left:1150, haeri:30}
+  ];
+}
+
+// ── 입고 검수(선재/체인 공용) — 줄마다 측정중량 입력, 자재실 용해 입력과 동일 형태 ──
+function openWireCheck()  { loadCheck('wire'); }
+function openChainCheck() { loadCheck('chain'); }
+
+async function loadCheck(kind) {
+  S.checkKind = kind;
+  S.screenMode = 'check';
+  S.checkVals = {};
+  showLoad();
+  S.pendData = await fetchPending(kind);
+  hideLoad();
+  renderCheck();
+  show('inpSc');
+}
+
+async function fetchPending(kind) {
+  if (DEMO) { await sleep(250); return kind === 'chain' ? demoPendingChains() : demoPendingWires(); }
+  var act = kind === 'chain' ? 'getPendingChains' : 'getPendingWires';
+  try { var r = await apiGet(act, {}); return r.data || []; } catch(e) { return []; }
+}
+
+function pendSig(d) { return (d || []).map(function(x) { return x.no + ':' + x.claimed + ':' + x.status; }).join('|'); }
+
+// 새 항목이 넘어오면 자동 갱신(입력 중인 측정값은 유지)
+async function pollCheck() {
+  if (S.screenMode !== 'check') return;
+  if (!document.getElementById('inpSc').classList.contains('active')) return;
+  var data = await fetchPending(S.checkKind);
+  if (pendSig(data) === pendSig(S.pendData)) return;
+  S.pendData = data;
+  renderCheck();
+  toast('🔄 새 항목 도착 · 목록 갱신', 1600, 'ok');
+}
+
+function renderCheck() {
+  var isChain = S.checkKind === 'chain';
+  var srcLbl = isChain ? '기계실' : '자재실';
+  document.getElementById('inpTitle').textContent = isChain ? '체인 입고확인' : '선재 입고확인';
+  document.getElementById('inpHdr').style.background = S.deptColor;
+  var _ib = document.getElementById('inpBack'); _ib.onclick = goHome; _ib.textContent = '← 홈';
+  var fb = document.getElementById('inpChainBtn'); if (fb) fb.style.display = 'none';
+  if (isChain) setNav('inp', '📥 체인 입고확인', function(){loadCheck('chain');}, '🔥 용접작업', openWeldProd, 'a');
+  else setNav('inp', '📥 선재 입고확인', function(){loadCheck('wire');}, '⛓️ 체인생산', openChainProd, 'a');
+  var data = S.pendData || [];
+  S.pendMap = {};
+  data.forEach(function(x) { S.pendMap[x.no] = x; });
+  var body = document.getElementById('inpBody');
+  var saveBtn = document.getElementById('saveBtn');
+  if (!data.length) {
+    body.innerHTML = '<div class="empty"><div class="eico">✅</div><div class="etxt">확인할 항목이 없습니다</div></div>';
+    saveBtn.style.display = 'none';
+    return;
+  }
+  saveBtn.style.display = '';
+  var html = '<div class="inp-card"><div class="inp-label" style="margin-bottom:8px">' + srcLbl + '에서 넘어온 ' + (isChain ? '체인' : '선재') + ' · 측정중량 입력</div>';
+  data.forEach(function(x) {
+    var bad = x.status === '불일치';
+    var cur = S.checkVals[x.no] || 0;
+    var size = isChain ? (x.chainType || '-') : ((x.wtype || '-') + (x.cont ? '  ·  ' + x.cont + '%' : ''));
+    html +=
+      '<div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #f0f0f0">' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-size:16px;font-weight:700;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + size + '</div>' +
+          '<div style="font-size:12px;color:#888;margin-top:2px">번호 ' + x.no + '</div>' +
+          '<div style="font-size:13px;color:#1565c0;margin-top:3px">' + srcLbl + ' ' + fmt(x.claimed) + 'g' + (bad ? ' <span style="color:#c62828">· 불일치 재확인</span>' : '') + '</div>' +
+        '</div>' +
+        '<div class="inp-field grn" style="width:140px;flex-shrink:0;cursor:pointer" onclick="openCheckKP(\'' + x.no + '\')">' +
+          '<span class="fv" id="chk_' + x.no + '">' + fmt(cur) + '</span><span class="fu" style="font-size:14px">g</span>' +
+        '</div>' +
+      '</div>';
+  });
+  html += '</div>';
+  body.innerHTML = html;
+  saveBtn.textContent = '✅ 확인 저장';
+  saveBtn.onclick = submitChecks;
+}
+
+function openCheckKP(no) {
+  var x = S.pendMap[no]; if (!x) return;
+  var size = (S.checkKind === 'chain') ? (x.chainType || '') : (x.wtype || '');
+  S.kpField = 'chk_' + no;
+  S.kpVal = S.checkVals[no] ? String(S.checkVals[no]) : '';
+  document.getElementById('kpLbl').textContent = size + ' · ' + no + ' / 측정중량(g)';
+  document.getElementById('kpDisp').textContent = fmtKp(S.kpVal);
+  document.getElementById('kpBg').classList.add('on');
+  document.getElementById('kpSheet').classList.add('on');
+}
+
+function submitChecks() {
+  var items = [];
+  Object.keys(S.checkVals).forEach(function(no) {
+    if (S.checkVals[no] > 0) items.push({no:no, checkWeight:S.checkVals[no]});
+  });
+  if (!items.length) { toast('⚠️ 측정중량을 1개 이상 입력하세요', 2000, 'err'); return; }
+  requirePin(function() { doSubmitChecks(items); });
+}
+
+async function doSubmitChecks(items) {
+  showLoad();
+  var emp = S.user ? S.user.name : '미확인';
+  var kind = S.checkKind;
+  if (DEMO) { await sleep(500); hideLoad(); toast('✅ ' + items.length + '건 확인 (데모)', 1800, 'ok'); loadCheck(kind); return; }
+  try {
+    var act = kind === 'chain' ? 'confirmChains' : 'confirmWires';
+    var r = await apiPost({action:act, items:items, empName:emp});
+    hideLoad();
+    if (r.success) {
+      var msg = '✅ 활성화 ' + r.ok + '건';
+      if (r.bad > 0) msg += ' · ⚠️ 불일치 ' + r.bad + '건(재확인)';
+      toast(msg, 3500, r.bad > 0 ? 'err' : 'ok');
+      loadCheck(kind);
+    } else toast('❌ ' + (r.error || '실패'), 2500, 'err');
+  } catch(e) { hideLoad(); toast('❌ 연결 오류', 2500, 'err'); }
+}
+
+function demoPendingWires() {
+  return [
+    {no:'260515-001-W1', wtype:'1.4', mat:'은', cont:'95', claimed:1000, status:'검수대기'},
+    {no:'260515-001-W2', wtype:'0.8', mat:'은', cont:'95', claimed:2000, status:'검수대기'}
+  ];
+}
+function demoPendingChains() {
+  return [
+    {no:'260515-001-C1', melt:'260515-001', chainType:'FC-80', claimed:780, status:'검수대기'},
+    {no:'260515-001-C2', melt:'260515-001', chainType:'FC-100', claimed:1150, status:'검수대기'}
+  ];
+}
+
+// ═══════════════════════════════════════════════════════
+// ★ 관리부 — 작업지시 등록 (새 공정 투입)
+// ═══════════════════════════════════════════════════════
+var G_ORDER = {
+  meltNo:'', material:'순은', content:'92.5',
+  silver:0, alloy:0, furnace:0,
+  scrapRecv:0, scrapUse:0, scrapLeft:0, badWire:0,
+  rows:[] // [{wireType, wirePlan, chainType, chainLen, chainWt}]
+};
+
+function openOrderInput() {
+  G_ORDER = {meltNo:'', material:'순은', content:'92.5',
+    silver:0, alloy:0, furnace:0, scrapRecv:0, scrapUse:0, scrapLeft:0, badWire:0, rows:[]};
+  renderOrderScreen();
+  show('orderSc');
+}
+
+function renderOrderScreen() {
+  var body = document.getElementById('orderBody');
+  var today = new Date();
+  var yy = String(today.getFullYear()).slice(2);
+  var mm = String(today.getMonth()+1).padStart(2,'0');
+  var dd = String(today.getDate()).padStart(2,'0');
+  var defMelt = yy + mm + dd + '-001';
+  if (!G_ORDER.meltNo) G_ORDER.meltNo = defMelt;
+
+  var rowsHtml = (G_ORDER.rows||[]).map(function(r, i) {
+    return '<div style="background:#f8f9fa;border-radius:10px;padding:12px;margin-top:8px;position:relative">' +
+      '<button onclick="removeOrderRow(' + i + ')" style="position:absolute;top:8px;right:8px;background:#fde8e8;border:none;border-radius:6px;padding:4px 8px;color:#c62828;cursor:pointer;font-size:13px">✕</button>' +
+      '<div style="font-size:13px;color:#999;margin-bottom:4px">선재 ' + (i+1) + '번</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:14px">' +
+        '<div>선재종류: <b>' + (r.wireType||'-') + '</b></div>' +
+        '<div>예상중량: <b>' + fmt(r.wirePlan) + 'g</b></div>' +
+        '<div>체인종류: <b>' + (r.chainType||'-') + '</b></div>' +
+        '<div>체인길이: <b>' + (r.chainLen||'-') + 'm</b></div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  body.innerHTML =
+    '<div class="inp-card"><div class="inp-label">용해번호</div>' +
+      '<input id="ord_meltNo" style="width:100%;font-size:20px;font-weight:700;border:2px solid #1565c0;border-radius:8px;padding:8px 10px;outline:none;color:#1565c0" value="' + G_ORDER.meltNo + '" placeholder="예: 260515-001">' +
+    '</div>' +
+    '<div class="inp-row">' +
+      '<div class="inp-card"><div class="inp-label">재질</div>' +
+        '<select id="ord_material" style="width:100%;font-size:18px;font-weight:700;border:2px solid #ddd;border-radius:8px;padding:8px;outline:none">' +
+          ['순은','알로이','금','14K','18K'].map(function(m){ return '<option' + (G_ORDER.material===m?' selected':'') + '>' + m + '</option>'; }).join('') +
+        '</select></div>' +
+      '<div class="inp-card"><div class="inp-label">함량(%)</div>' +
+        '<input id="ord_content" type="number" style="width:100%;font-size:20px;font-weight:700;border:2px solid #ddd;border-radius:8px;padding:8px;outline:none" value="' + G_ORDER.content + '">' +
+      '</div>' +
+    '</div>' +
+    '<div class="inp-card"><div class="inp-label" style="margin-bottom:8px">📋 투입 재료 (g)</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+        ['silver:순은','alloy:알로이','furnace:연주로잔량','scrapRecv:재말수령','scrapUse:재말투입','scrapLeft:재말잔량','badWire:불량선재'].map(function(kv){
+          var k=kv.split(':')[0]; var lbl=kv.split(':')[1];
+          return '<div><div style="font-size:12px;color:#999;margin-bottom:3px">' + lbl + '</div>' +
+            '<div class="inp-field grn" style="padding:8px 10px" onclick="openOrderKP(\'' + k + '\',\'' + lbl + '\')">' +
+              '<span class="fv" id="ord_' + k + '" style="font-size:20px">' + fmt(G_ORDER[k]) + '</span>' +
+              '<span class="fu" style="font-size:13px">g</span>' +
+            '</div></div>';
+        }).join('') +
+      '</div>' +
+    '</div>' +
+    '<div class="inp-card"><div class="inp-label" style="margin-bottom:6px">선재 · 체인 라인 추가</div>' +
+      rowsHtml +
+      '<button onclick="openAddRowSheet()" style="margin-top:10px;width:100%;padding:14px;background:#e8f1fd;border:2px dashed #1565c0;border-radius:10px;color:#1565c0;font-size:16px;font-weight:700;cursor:pointer">+ 선재/체인 라인 추가</button>' +
+    '</div>';
+}
+
+function openOrderKP(field, label) {
+  S.kpField = 'order_' + field;
+  S.kpVal = G_ORDER[field] ? String(G_ORDER[field]) : '';
+  document.getElementById('kpLbl').textContent = label + ' (g)';
+  document.getElementById('kpDisp').textContent = fmtKp(S.kpVal);
+  document.getElementById('kpBg').classList.add('on');
+  document.getElementById('kpSheet').classList.add('on');
+}
+
+// closeKP 함수에 order_ 필드 처리 추가를 위해 패치
+var _origCloseKP = closeKP;
+closeKP = function() {
+  if (S.kpField && S.kpField.indexOf('order_') === 0) {
+    var field = S.kpField.slice(6);
+    var v = parseFloat(S.kpVal) || 0;
+    G_ORDER[field] = v;
+    var el = document.getElementById('ord_' + field);
+    if (el) el.textContent = fmt(v);
+    document.getElementById('kpBg').classList.remove('on');
+    document.getElementById('kpSheet').classList.remove('on');
+    return;
+  }
+  if (S.kpField && S.kpField.indexOf('addrow_') === 0) {
+    var rfield = S.kpField.slice(7);
+    var rv = S.kpVal;
+    G_NEWROW[rfield] = isNaN(parseFloat(rv)) ? rv : parseFloat(rv);
+    var rel = document.getElementById('nr_' + rfield);
+    if (rel) rel.textContent = rfield.indexOf('Wt')>=0||rfield==='wirePlan' ? fmt(G_NEWROW[rfield])+'g' : (G_NEWROW[rfield]||'-');
+    document.getElementById('kpBg').classList.remove('on');
+    document.getElementById('kpSheet').classList.remove('on');
+    return;
+  }
+  _origCloseKP();
+};
+
+var G_NEWROW = {};
+function openAddRowSheet() {
+  G_NEWROW = {wireType:'', wirePlan:0, chainType:'', chainLen:'', chainWt:0};
+  var s = document.getElementById('addRowSheet');
+  s.innerHTML =
+    '<div style="padding:18px">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">' +
+      '<div style="font-size:19px;font-weight:700">선재/체인 라인 추가</div>' +
+      '<button onclick="closeAddRow()" style="background:none;border:none;font-size:24px;color:#aaa;cursor:pointer">✕</button>' +
+    '</div>' +
+    '<div style="display:flex;flex-direction:column;gap:10px">' +
+      '<div><div style="font-size:13px;color:#999;margin-bottom:4px">선재 종류 (예: 1.0mm 순은선)</div>' +
+        '<input id="nr_wireType_inp" style="width:100%;font-size:18px;border:2px solid #ddd;border-radius:8px;padding:10px;outline:none" placeholder="1.0mm 순은선" oninput="G_NEWROW.wireType=this.value"></div>' +
+      '<div><div style="font-size:13px;color:#999;margin-bottom:4px">예상 중량(g)</div>' +
+        '<div class="inp-field grn" onclick="openAddRowKP(\'wirePlan\',\'예상중량\')"><span class="fv" id="nr_wirePlan" style="font-size:22px">0</span><span class="fu">g</span></div></div>' +
+      '<div><div style="font-size:13px;color:#999;margin-bottom:4px">체인 종류 (예: FC-80)</div>' +
+        '<input id="nr_chainType_inp" style="width:100%;font-size:18px;border:2px solid #ddd;border-radius:8px;padding:10px;outline:none" placeholder="FC-80" oninput="G_NEWROW.chainType=this.value"></div>' +
+      '<div><div style="font-size:13px;color:#999;margin-bottom:4px">체인 길이(m)</div>' +
+        '<input id="nr_chainLen_inp" style="width:100%;font-size:18px;border:2px solid #ddd;border-radius:8px;padding:10px;outline:none" placeholder="45" oninput="G_NEWROW.chainLen=this.value"></div>' +
+      '<button onclick="confirmAddRow()" style="width:100%;padding:16px;background:#1565c0;color:#fff;border:none;border-radius:12px;font-size:18px;font-weight:700;cursor:pointer;margin-top:4px">✅ 추가</button>' +
+    '</div></div>';
+  document.getElementById('addRowBg').classList.add('on');
+  s.style.display = 'block';
+}
+function openAddRowKP(field, label) {
+  S.kpField = 'addrow_' + field;
+  S.kpVal = G_NEWROW[field] ? String(G_NEWROW[field]) : '';
+  document.getElementById('kpLbl').textContent = label + ' (g)';
+  document.getElementById('kpDisp').textContent = fmtKp(S.kpVal);
+  document.getElementById('kpBg').classList.add('on');
+  document.getElementById('kpSheet').classList.add('on');
+}
+function confirmAddRow() {
+  G_NEWROW.wireType = document.getElementById('nr_wireType_inp').value.trim();
+  G_NEWROW.chainType = document.getElementById('nr_chainType_inp').value.trim();
+  G_NEWROW.chainLen = document.getElementById('nr_chainLen_inp').value.trim();
+  if (!G_NEWROW.wireType) { toast('⚠️ 선재 종류를 입력하세요', 2000, 'err'); return; }
+  if (!G_NEWROW.wirePlan) { toast('⚠️ 예상 중량을 입력하세요', 2000, 'err'); return; }
+  G_ORDER.rows.push({...G_NEWROW});
+  closeAddRow();
+  renderOrderScreen();
+}
+function removeOrderRow(i) { G_ORDER.rows.splice(i,1); renderOrderScreen(); }
+function closeAddRow() {
+  document.getElementById('addRowBg').classList.remove('on');
+  document.getElementById('addRowSheet').style.display = 'none';
+}
+
+async function submitOrder() {
+  G_ORDER.meltNo = (document.getElementById('ord_meltNo').value||'').trim();
+  G_ORDER.material = document.getElementById('ord_material').value;
+  G_ORDER.content = document.getElementById('ord_content').value;
+  if (!G_ORDER.meltNo) { toast('⚠️ 용해번호를 입력하세요', 2000, 'err'); return; }
+  if (!G_ORDER.rows.length) { toast('⚠️ 선재 라인을 1개 이상 추가하세요', 2000, 'err'); return; }
+  requirePin(async function() {
+    showLoad();
+    try {
+      var api = window._fbApi;
+      var today = new Date().toISOString().split('T')[0];
+      for (var i = 0; i < G_ORDER.rows.length; i++) {
+        var r = G_ORDER.rows[i];
+        await api.fbAddRow({
+          date: today,
+          meltNo: G_ORDER.meltNo,
+          material: G_ORDER.material,
+          content: G_ORDER.content,
+          silver: G_ORDER.silver||0,
+          alloy: G_ORDER.alloy||0,
+          furnace: G_ORDER.furnace||0,
+          scrapRecv: G_ORDER.scrapRecv||0,
+          scrapUse: G_ORDER.scrapUse||0,
+          scrapLeft: G_ORDER.scrapLeft||0,
+          badWire: G_ORDER.badWire||0,
+          wireType: r.wireType||'',
+          wirePlan: r.wirePlan||0,
+          chainType: r.chainType||'',
+          chainLen: r.chainLen||'',
+          chainWt: r.chainWt||0,
+          wireReal:0, chainProd:0, haeri:0, weldAfter:0
+        });
+      }
+      hideLoad();
+      toast('✅ ' + G_ORDER.rows.length + '개 라인 등록 완료 · 자재실로 전달', 2500, 'ok');
+      setTimeout(openInventory, 2000);
+    } catch(e) { hideLoad(); toast('❌ 등록 실패: ' + e.message, 3000, 'err'); }
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// ★ 초기 세팅 (부서 비밀번호 · 작업자 등록)
+// ═══════════════════════════════════════════════════════
+async function openSetup() {
+  show('setupSc');
+  loadSetupData();
+}
+
+async function loadSetupData() {
+  var body = document.getElementById('setupBody');
+  body.innerHTML = '<div class="empty"><div class="eico">⏳</div><div class="etxt">로딩 중...</div></div>';
+  try {
+    var { getDocs, collection, doc, setDoc, deleteDoc } = window._fbFirestore || {};
+    // 부서 비밀번호 로드
+    var deptSnap = await getDocs(collection(window._db, 'depts'));
+    var depts = {}; deptSnap.forEach(function(d){ depts[d.id]=d.data(); });
+    // 직원 로드
+    var empSnap = await getDocs(collection(window._db, 'employees'));
+    var emps = []; empSnap.forEach(function(d){ emps.push({id:d.id,...d.data()}); });
+
+    var deptList = [
+      {code:'MGMT',name:'관리부',color:'#b71c1c'},
+      {code:'MATERIAL',name:'자재실',color:'#2e7d32'},
+      {code:'MACHINE',name:'기계실',color:'#1565c0'},
+      {code:'WELD',name:'용접실',color:'#bf360c'},
+      {code:'QUALITY',name:'품질부',color:'#6a1b9a'},
+      {code:'GARANG',name:'가랑실',color:'#00695c'},
+      {code:'ASSEMBLY',name:'조립실',color:'#e65100'},
+      {code:'OUTSOURCE',name:'외주',color:'#546e7a'},
+    ];
+
+    var html = '<div class="inp-card"><div class="inp-label" style="margin-bottom:10px;font-size:15px;font-weight:700">🔑 부서 비밀번호 (4자리)</div>' +
+      deptList.map(function(d){
+        var pw = depts[d.code] ? depts[d.code].pw : '';
+        return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0f0f0">' +
+          '<div style="flex:1;font-size:16px;font-weight:700;color:' + d.color + '">' + d.name + '</div>' +
+          '<input id="dpw_' + d.code + '" maxlength="4" style="width:90px;font-size:18px;font-weight:700;border:2px solid #ddd;border-radius:8px;padding:8px;text-align:center;outline:none" placeholder="0000" value="' + pw + '">' +
+          '<button onclick="saveDeptPw(\'' + d.code + '\')" style="background:#1565c0;color:#fff;border:none;border-radius:8px;padding:9px 12px;font-size:14px;font-weight:700;cursor:pointer">저장</button>' +
+        '</div>';
+      }).join('') +
+    '</div>' +
+
+    '<div class="inp-card" style="margin-top:0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">' +
+      '<div style="font-size:15px;font-weight:700">👷 작업자 등록</div>' +
+      '<button onclick="openAddEmp()" style="background:#2e7d32;color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:14px;font-weight:700;cursor:pointer">+ 추가</button>' +
+    '</div>' +
+    (emps.length ? emps.map(function(e){
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0f0f0">' +
+        '<div style="flex:1"><div style="font-size:16px;font-weight:700">' + e.name + '</div>' +
+          '<div style="font-size:13px;color:#888">PIN: ' + e.pin + ' · ' + e.dept + '</div></div>' +
+        '<button onclick="deleteEmp(\'' + e.id + '\')" style="background:#fde8e8;color:#c62828;border:none;border-radius:8px;padding:8px 10px;font-size:13px;cursor:pointer">삭제</button>' +
+      '</div>';
+    }).join('') : '<div style="color:#bbb;font-size:14px">등록된 작업자가 없습니다</div>') +
+    '</div>';
+
+    body.innerHTML = html;
+  } catch(e) {
+    body.innerHTML = '<div class="empty"><div class="eico">❌</div><div class="etxt">로드 실패: ' + e.message + '</div></div>';
+  }
+}
+
+async function saveDeptPw(code) {
+  var pw = (document.getElementById('dpw_' + code).value||'').trim();
+  if (pw.length !== 4 || isNaN(pw)) { toast('⚠️ 4자리 숫자를 입력하세요', 2000, 'err'); return; }
+  try {
+    var { doc, setDoc } = window._fbFirestore || {};
+    await setDoc(doc(window._db, 'depts', code), {pw});
+    toast('✅ ' + code + ' 비밀번호 저장', 1500, 'ok');
+  } catch(e) { toast('❌ 저장 실패: ' + e.message, 2500, 'err'); }
+}
+
+var G_NEWEMP = {};
+function openAddEmp() {
+  var deptList = ['MGMT','MATERIAL','MACHINE','WELD','QUALITY','GARANG','ASSEMBLY','OUTSOURCE'];
+  var s = document.getElementById('addRowSheet');
+  s.innerHTML =
+    '<div style="padding:18px">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">' +
+      '<div style="font-size:19px;font-weight:700">작업자 추가</div>' +
+      '<button onclick="closeAddRow()" style="background:none;border:none;font-size:24px;color:#aaa;cursor:pointer">✕</button>' +
+    '</div>' +
+    '<div style="display:flex;flex-direction:column;gap:12px">' +
+      '<div><div style="font-size:13px;color:#999;margin-bottom:4px">이름</div>' +
+        '<input id="emp_name" style="width:100%;font-size:18px;border:2px solid #ddd;border-radius:8px;padding:10px;outline:none" placeholder="홍길동"></div>' +
+      '<div><div style="font-size:13px;color:#999;margin-bottom:4px">4자리 PIN</div>' +
+        '<input id="emp_pin" type="number" maxlength="4" style="width:100%;font-size:22px;font-weight:700;border:2px solid #ddd;border-radius:8px;padding:10px;outline:none" placeholder="1234"></div>' +
+      '<div><div style="font-size:13px;color:#999;margin-bottom:4px">소속 부서</div>' +
+        '<select id="emp_dept" style="width:100%;font-size:18px;border:2px solid #ddd;border-radius:8px;padding:10px;outline:none">' +
+          deptList.map(function(d){ return '<option value="' + d + '">' + d + '</option>'; }).join('') +
+        '</select></div>' +
+      '<button onclick="saveNewEmp()" style="width:100%;padding:16px;background:#2e7d32;color:#fff;border:none;border-radius:12px;font-size:18px;font-weight:700;cursor:pointer">✅ 등록</button>' +
+    '</div></div>';
+  document.getElementById('addRowBg').classList.add('on');
+  s.style.display = 'block';
+}
+
+async function saveNewEmp() {
+  var name = (document.getElementById('emp_name').value||'').trim();
+  var pin  = (document.getElementById('emp_pin').value||'').trim();
+  var dept = document.getElementById('emp_dept').value;
+  if (!name || pin.length !== 4) { toast('⚠️ 이름과 4자리 PIN을 입력하세요', 2000, 'err'); return; }
+  try {
+    var { collection, addDoc } = window._fbFirestore || {};
+    await addDoc(collection(window._db, 'employees'), {name, pin, dept});
+    closeAddRow();
+    toast('✅ ' + name + ' 등록 완료', 1500, 'ok');
+    loadSetupData();
+  } catch(e) { toast('❌ 등록 실패: ' + e.message, 2500, 'err'); }
+}
+
+async function deleteEmp(id) {
+  try {
+    var { doc, deleteDoc } = window._fbFirestore || {};
+    await deleteDoc(doc(window._db, 'employees', id));
+    toast('🗑 삭제됨', 1200, 'ok');
+    loadSetupData();
+  } catch(e) { toast('❌ 삭제 실패', 2000, 'err'); }
+}
+
+</script>
+</body>
+</html>
