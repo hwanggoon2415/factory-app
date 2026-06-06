@@ -1054,6 +1054,15 @@ function closeKP() {
     hideKpSheet();
     return;
   }
+  if (S.kpField.indexOf('prodLen_') === 0) {        // 체인 길이 입력
+    var no = S.kpField.slice(8);
+    var v = parseFloat(S.kpVal) || 0;
+    if (!S.prodLens) S.prodLens = {};
+    S.prodLens[no] = v;
+    var el = document.getElementById('pl_' + no);
+    if (el) el.textContent = v || 0;
+    hideKpSheet(); return;
+  }
   if (S.kpField.indexOf('prod_') === 0) {           // 체인 생산중량/용접 후중량(필드 표시)
     var pno = S.kpField.slice(5);
     S.prodVals[pno] = v;
@@ -1229,7 +1238,7 @@ async function reloadLots(silent) {
 }
 
 async function openChainProd() {
-  S.lotKind = 'chain'; S.basket = {}; S.fields = {prodWeight:0};
+  S.lotKind = 'chain'; S.basket = {}; S.fields = {prodWeight:0}; S.prodLens = {};
   document.getElementById('lotTitle').textContent = '체인 생산 · 선재 투입';
   document.getElementById('lotHdr').style.background = S.deptColor;
   var _lb = document.getElementById('lotBack'); _lb.onclick = goHome; _lb.textContent = '← 홈';
@@ -1291,9 +1300,13 @@ function renderProduceList(box, list) {
     var lenTxt = (isChain && l.chainLen !== '' && l.chainLen != null) ? '<span style="color:#888;font-weight:400;margin-left:16px">' + l.chainLen + 'm</span>' : '';
     var mainTxt = isChain ? ((l.wtype||'-') + '  →  ' + (l.chainType||'-') + lenTxt) : (l.chainType||'-');
     var subTxt = isChain ? ('선재 ' + fmt(l.left) + 'g · ' + l.no) : ('번호 ' + l.no + ' · 체인 ' + fmt(l.left) + 'g');
+    var curLen = (S.prodLens && S.prodLens[l.no]) || 0;
     var right = active
-      ? '<div class="inp-field grn" style="width:140px;flex-shrink:0;cursor:pointer" onclick="openProduceKP(\'' + l.no + '\')"><span class="fv" id="pv_' + l.no + '">' + fmt(cur) + '</span><span class="fu" style="font-size:14px">g</span></div>'
-      : '<div style="width:140px;flex-shrink:0;text-align:right;color:#e69500;font-weight:700;font-size:13px">입고확인 대기</div>';
+      ? '<div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">' +
+          '<div class="inp-field grn" style="width:130px;cursor:pointer" onclick="openProduceKP(\'' + l.no + '\')"><span class="fv" id="pv_' + l.no + '">' + fmt(cur) + '</span><span class="fu" style="font-size:13px">g</span></div>' +
+          (isChain ? '<div class="inp-field" style="width:130px;cursor:pointer;background:#e8f5e9;border:2px solid #43a047" onclick="openProduceLenKP(\'' + l.no + '\')"><span class="fv" id="pl_' + l.no + '" style="font-size:18px">' + (curLen||0) + '</span><span class="fu" style="font-size:13px">m</span></div>' : '') +
+        '</div>'
+      : '<div style="width:130px;flex-shrink:0;text-align:right;color:#e69500;font-weight:700;font-size:13px">입고확인 대기</div>';
     html += '<div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #f0f0f0' + (active ? '' : ';opacity:.5') + '">' +
       '<div style="flex:1;min-width:0">' +
         '<div style="font-size:16px;font-weight:700;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + mainTxt + '</div>' +
@@ -1355,7 +1368,11 @@ function submitProduce() {
   var isChain = S.lotKind === 'chain';
   var items = [];
   Object.keys(S.prodVals || {}).forEach(function(no) {
-    if (S.prodVals[no] > 0) items.push({no:no, weight:S.prodVals[no]});
+    if (S.prodVals[no] > 0) items.push({
+      no: no,
+      weight: S.prodVals[no],
+      chainLen: (S.prodLens && S.prodLens[no]) ? S.prodLens[no] : 0
+    });
   });
   if (!items.length) { toast(isChain ? '⚠️ 체인 생산중량을 입력하세요' : '⚠️ 용접 후중량을 입력하세요', 2000, 'err'); return; }
   if (S.user) doSubmitProduce(items); else requirePin(function() { doSubmitProduce(items); });
@@ -1378,6 +1395,14 @@ async function doSubmitProduce(items) {
     }
     else toast('❌ ' + (r.error || '실패'), 2500, 'err');
   } catch(e) { hideLoad(); toast('❌ 연결 오류', 2500, 'err'); }
+}
+function openProduceLenKP(no) {
+  S.kpField = 'prodLen_' + no;
+  S.kpVal = S.prodLens && S.prodLens[no] ? String(S.prodLens[no]) : '';
+  document.getElementById('kpLbl').textContent = no + ' 체인 길이 (m)';
+  document.getElementById('kpDisp').textContent = fmtKp(S.kpVal);
+  document.getElementById('kpBg').classList.add('on');
+  document.getElementById('kpSheet').classList.add('on');
 }
 function openUseKP(no) {
   var lot = S.availMap[no]; if (!lot) return;
