@@ -286,6 +286,23 @@ async function fbSaveWires(items, empName) {
       status: '검수대기', claimed: it.weight, emp: empName, ts: serverTimestamp()
     }, {merge:true});
   }
+  // 백그라운드로 구글 시트에도 반영
+  for (const it of items) {
+    const rowSnap2 = await getDoc(doc(db,'rows',String(it.rowNum)));
+    const row2 = rowSnap2.data() || {};
+    syncToSheet('updateWireReal', {
+      meltNo: row2.meltNo||'', wireType: row2.wireType||'',
+      wireReal: it.weight, emp: empName
+    });
+    const lotNo2 = it.rowNum + '-W';
+    syncToSheet('updateWireLot', {
+      no: lotNo2, meltNo: row2.meltNo||'', wtype: row2.wireType||'',
+      mat: row2.material||'', cont: row2.content||'',
+      left: it.weight, chainType: row2.chainType||'',
+      chainLen: row2.chainLen||'', chainWt: row2.chainWt||0,
+      status: '검수대기', rowNum: it.rowNum, emp: empName
+    });
+  }
   return {success:true};
 }
 
@@ -369,6 +386,12 @@ async function fbSaveChainsBatch(items, empName) {
     if (wire.rowNum) {
       await updateDoc(doc(db,'rows',String(wire.rowNum)), {chainProd: it.weight, haeri, chainEmp: empName, chainTs: serverTimestamp()});
     }
+    // 백그라운드로 구글 시트에도 반영
+    syncToSheet('updateChainLot', {
+      no: chainNo, meltNo: wire.meltNo||'',
+      chainType: wire.chainType||'', left: it.weight,
+      haeri, status: '검수대기', emp: empName
+    });
     made++;
   }
   return {success:true, made, haeriSum};
@@ -390,6 +413,11 @@ async function fbSaveWeldsBatch(items, empName) {
       no: weldNo, chainNo: it.no, meltNo: chain.meltNo||'',
       weld: it.weight, inc, emp: empName, ts: serverTimestamp()
     }, {merge:true});
+    // 백그라운드로 구글 시트에도 반영
+    syncToSheet('updateWeldLog', {
+      no: weldNo, chainNo: it.no, meltNo: chain.meltNo||'',
+      weld: it.weight, inc, left: chain.left||0, emp: empName
+    });
     made++;
   }
   return {success:true, made, incSum};
@@ -452,6 +480,18 @@ async function sheetGet(action, params) {
   url.searchParams.set('_', Date.now());
   var r = await fetch(url.toString(), {redirect:'follow', cache:'no-store'});
   return r.json();
+}
+
+// 백그라운드로 구글 시트에 데이터 전송 (작업자는 기다리지 않음)
+function syncToSheet(action, data) {
+  try {
+    fetch(SCRIPT_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: {'Content-Type': 'text/plain'},
+      body: JSON.stringify(Object.assign({action: action}, data))
+    }).catch(function() {}); // 실패해도 무시
+  } catch(e) {}
 } // rowNum -> row data for KP access
 var S = {
   dept:null, deptName:null, deptColor:'#1565c0',
