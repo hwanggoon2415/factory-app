@@ -1377,7 +1377,56 @@ function submitProduce() {
     });
   });
   if (!items.length) { toast(isChain ? '⚠️ 체인 생산중량을 입력하세요' : '⚠️ 용접 후중량을 입력하세요', 2000, 'err'); return; }
+
+  // 체인 생산일 때 길이 미입력 항목 체크
+  if (isChain) {
+    var missingLen = items.filter(function(it) { return !it.chainLen || it.chainLen <= 0; });
+    if (missingLen.length > 0) {
+      showConfirmPopup(
+        '⚠️ 길이 미입력 항목이 ' + missingLen.length + '개 있습니다\n\n길이를 입력하지 않으면 생산 기록이 불완전합니다.\n그래도 저장하시겠습니까?',
+        function() { // 네
+          if (S.user) doSubmitProduce(items); else requirePin(function() { doSubmitProduce(items); });
+        },
+        function() { return; } // 아니요 - 돌아가서 입력
+      );
+      return;
+    }
+  }
+
   if (S.user) doSubmitProduce(items); else requirePin(function() { doSubmitProduce(items); });
+}
+
+// 확인 팝업 (네/아니요)
+function showConfirmPopup(msg, onYes, onNo) {
+  var existing = document.getElementById('confirmPopup');
+  if (existing) existing.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'confirmPopup';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px';
+
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:20px;padding:30px;max-width:420px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.3)';
+
+  var lines = msg.split('\n').map(function(l) { return '<div style="margin-bottom:6px">' + l + '</div>'; }).join('');
+  box.innerHTML =
+    '<div style="font-size:20px;font-weight:800;color:#333;margin-bottom:20px;line-height:1.5">' + lines + '</div>' +
+    '<div style="display:flex;gap:12px;margin-top:10px">' +
+      '<button id="cpNo"  style="flex:1;padding:18px;font-size:20px;font-weight:700;border:2.5px solid #ddd;border-radius:14px;background:#f5f5f5;color:#555;cursor:pointer">아니요\n(돌아가기)</button>' +
+      '<button id="cpYes" style="flex:1;padding:18px;font-size:20px;font-weight:700;border:none;border-radius:14px;background:#1565c0;color:#fff;cursor:pointer">네\n(저장하기)</button>' +
+    '</div>';
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+  document.getElementById('cpNo').onclick = function() {
+    overlay.remove();
+    if (onNo) onNo();
+  };
+  document.getElementById('cpYes').onclick = function() {
+    overlay.remove();
+    if (onYes) onYes();
+  };
 }
 async function doSubmitProduce(items) {
   var isChain = S.lotKind === 'chain';
