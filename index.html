@@ -252,7 +252,8 @@ async function fbVerifyDept(code, pw) {
 
 // 작업자 PIN 확인
 async function fbVerifyEmp(pin, dept) {
-  const q = query(collection(db,'employees'), where('pin','==',pin), where('dept','==',dept));
+  // PIN만으로 검증 (dept 조건 제거 - 부서 상관없이 PIN으로 확인)
+  const q = query(collection(db,'employees'), where('pin','==',String(pin)));
   const snap = await getDocs(q);
   if (snap.empty) return {success:false};
   const d = snap.docs[0].data();
