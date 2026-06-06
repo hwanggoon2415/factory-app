@@ -930,15 +930,38 @@ function buildKpGrid() {
   ok.onclick = closeKP;
   g.appendChild(ok);
 
-  // ★ PC 키보드 입력 지원
+  // ★ PC 키보드 입력 지원 (숫자키패드 + 로그인PIN + 담당자PIN)
   document.addEventListener('keydown', function(e) {
-    var sheet = document.getElementById('kpSheet');
-    if (!sheet || !sheet.classList.contains('on')) return;
-    if (e.key >= '0' && e.key <= '9') { kpPress(e.key); e.preventDefault(); }
-    else if (e.key === '.') { kpPress('.'); e.preventDefault(); }
-    else if (e.key === 'Backspace') { kpPress('del'); e.preventDefault(); }
-    else if (e.key === 'Enter') { closeKP(); e.preventDefault(); }
-    else if (e.key === 'Escape') { cancelKP(); e.preventDefault(); }
+    var kpSheet  = document.getElementById('kpSheet');
+    var loginSc  = document.getElementById('loginSc');
+    var pinOvl   = document.getElementById('pinOvl');
+
+    // 숫자 키패드 (중량 입력)
+    if (kpSheet && kpSheet.classList.contains('on')) {
+      if (e.key >= '0' && e.key <= '9') { kpPress(e.key); e.preventDefault(); }
+      else if (e.key === '.') { kpPress('.'); e.preventDefault(); }
+      else if (e.key === 'Backspace') { kpPress('del'); e.preventDefault(); }
+      else if (e.key === 'Enter') { closeKP(); e.preventDefault(); }
+      else if (e.key === 'Escape') { cancelKP(); e.preventDefault(); }
+      return;
+    }
+
+    // 부서 로그인 PIN
+    if (loginSc && loginSc.classList.contains('active')) {
+      if (e.key >= '0' && e.key <= '9') { loginKey(e.key); e.preventDefault(); }
+      else if (e.key === 'Backspace') { loginKey('del'); e.preventDefault(); }
+      else if (e.key === 'Enter') { loginKey('ok'); e.preventDefault(); }
+      return;
+    }
+
+    // 담당자 PIN (저장 확인)
+    if (pinOvl && pinOvl.classList.contains('on')) {
+      if (e.key >= '0' && e.key <= '9') { pinKey(e.key); e.preventDefault(); }
+      else if (e.key === 'Backspace') { pinKey('del'); e.preventDefault(); }
+      else if (e.key === 'Enter') { pinKey('ok'); e.preventDefault(); }
+      else if (e.key === 'Escape') { closePinOvl(); e.preventDefault(); }
+      return;
+    }
   });
 }
 function fmtKp(v) {
