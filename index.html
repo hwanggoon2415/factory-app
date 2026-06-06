@@ -1368,36 +1368,56 @@ function openProduceKP(no) {
 }
 function submitProduce() {
   var isChain = S.lotKind === 'chain';
-  var items = [];
-  Object.keys(S.prodVals || {}).forEach(function(no) {
-    if (S.prodVals[no] > 0) items.push({
-      no: no,
-      weight: S.prodVals[no],
-      chainLen: (S.prodLens && S.prodLens[no]) ? S.prodLens[no] : 0
-    });
-  });
-  if (!items.length) { toast(isChain ? '⚠️ 체인 생산중량을 입력하세요' : '⚠️ 용접 후중량을 입력하세요', 2000, 'err'); return; }
 
-  // 체인 생산일 때 길이 미입력 항목 체크
   if (isChain) {
-    var missingLen = items.filter(function(it) { return !it.chainLen || it.chainLen <= 0; });
-    if (missingLen.length > 0) {
-      showConfirmPopup(
-        '⚠️ 길이 미입력 항목이 ' + missingLen.length + '개 있습니다
+    // 체인 생산: 중량 또는 길이 중 하나라도 입력된 항목 수집
+    var allNos = Object.keys(S.prodVals || {}).concat(Object.keys(S.prodLens || {}));
+    var uniqueNos = allNos.filter(function(v, i, a) { return a.indexOf(v) === i; });
+    var items = [];
+    uniqueNos.forEach(function(no) {
+      var w = (S.prodVals && S.prodVals[no]) || 0;
+      var l = (S.prodLens && S.prodLens[no]) || 0;
+      if (w > 0 || l > 0) {
+        items.push({no: no, weight: w, chainLen: l});
+      }
+    });
 
-길이를 입력하지 않으면 생산 기록이 불완전합니다.
-그래도 저장하시겠습니까?',
-        function() { // 네 - 항상 비밀번호 요구
-          requirePin(function() { doSubmitProduce(items); });
-        },
-        function() { return; } // 아니요 - 돌아가서 입력
+    if (!items.length) { toast('⚠️ 생산중량 또는 길이를 입력하세요', 2000, 'err'); return; }
+
+    // 중량 또는 길이 둘 중 하나라도 미입력 항목 체크
+    var missingWeight = items.filter(function(it) { return !it.weight || it.weight <= 0; });
+    var missingLen    = items.filter(function(it) { return !it.chainLen || it.chainLen <= 0; });
+    var missingItems  = missingWeight.length + missingLen.length;
+
+    if (missingItems > 0) {
+      var msg = '⚠️ 입력되지 않은 항목이 있습니다
+
+';
+      if (missingWeight.length) msg += '· 생산중량 미입력 ' + missingWeight.length + '개
+';
+      if (missingLen.length)    msg += '· 생산길이 미입력 ' + missingLen.length + '개
+';
+      msg += '
+미입력 항목은 0으로 저장됩니다.
+그래도 저장하시겠습니까?';
+      showConfirmPopup(msg,
+        function() { requirePin(function() { doSubmitProduce(items); }); },
+        function() { return; }
       );
       return;
     }
-  }
 
-  // 항상 비밀번호 입력 후 저장
-  requirePin(function() { doSubmitProduce(items); });
+    requirePin(function() { doSubmitProduce(items); });
+
+  } else {
+    // 용접: 중량만
+    var items = [];
+    Object.keys(S.prodVals || {}).forEach(function(no) {
+      if (S.prodVals[no] > 0) items.push({no: no, weight: S.prodVals[no], chainLen: 0});
+    });
+    if (!items.length) { toast('⚠️ 용접 후중량을 입력하세요', 2000, 'err'); return; }
+    requirePin(function() { doSubmitProduce(items); });
+  }
 }
 
 // 확인 팝업 (네/아니요)
