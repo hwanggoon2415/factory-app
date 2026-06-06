@@ -389,6 +389,7 @@ async function fbSaveChainsBatch(items, empName) {
     await setDoc(doc(db,'chainLots', chainNo), {
       no: chainNo, wireNo: it.no, meltNo: wire.meltNo||'',
       chainType: wire.chainType||'', left: it.weight, haeri,
+      chainLen: it.chainLen||0,
       status: '검수대기', claimed: it.weight, emp: empName, ts: serverTimestamp()
     }, {merge:true});
     // rows 업데이트
@@ -399,7 +400,8 @@ async function fbSaveChainsBatch(items, empName) {
     syncToSheet('updateChainLot', {
       no: chainNo, meltNo: wire.meltNo||'',
       chainType: wire.chainType||'', left: it.weight,
-      haeri, status: '검수대기', emp: empName
+      haeri, chainLen: it.chainLen||0,
+      status: '검수대기', emp: empName
     });
     made++;
   }
@@ -1297,7 +1299,7 @@ function renderProduceList(box, list) {
       if (l.chainWt) sp.push('중량 ' + fmt(l.chainWt) + 'g');
       spec = sp.length ? sp.join(' · ') + ' · ' : '';
     }
-    var lenTxt = (isChain && l.chainLen !== '' && l.chainLen != null) ? '<span style="color:#888;font-weight:400;margin-left:16px">' + l.chainLen + 'm</span>' : '';
+    var lenTxt = (isChain && l.chainLen !== '' && l.chainLen != null) ? '<span style="color:#1565c0;font-weight:700;margin-left:12px;font-size:20px">' + l.chainLen + 'm</span>' : '';
     var mainTxt = isChain ? ((l.wtype||'-') + '  →  ' + (l.chainType||'-') + lenTxt) : (l.chainType||'-');
     var subTxt = isChain ? ('선재 ' + fmt(l.left) + 'g · ' + l.no) : ('번호 ' + l.no + ' · 체인 ' + fmt(l.left) + 'g');
     var curLen = (S.prodLens && S.prodLens[l.no]) || 0;
@@ -1307,10 +1309,10 @@ function renderProduceList(box, list) {
           (isChain ? '<div class="inp-field" style="width:160px;height:64px;cursor:pointer;display:flex;align-items:center;justify-content:flex-end;padding:0 14px;border-radius:14px;background:#e8f5e9;border:2.5px solid #43a047" onclick="openProduceLenKP(\'' + l.no + '\')"><span class="fv" id="pl_' + l.no + '" style="font-size:26px;font-weight:800">' + (curLen||0) + '</span><span class="fu" style="font-size:16px;margin-left:4px">m</span></div>' : '') +
         '</div>'
       : '<div style="width:160px;flex-shrink:0;text-align:right;color:#e69500;font-weight:700;font-size:15px">입고확인 대기</div>';
-    html += '<div style="display:flex;align-items:center;gap:12px;padding:16px 0;border-bottom:2px solid #f0f0f0' + (active ? '' : ';opacity:.5') + '">' +
+    html += '<div style="display:flex;align-items:center;gap:12px;padding:18px 0;border-bottom:2px solid #eee' + (active ? '' : ';opacity:.5') + '">' +
       '<div style="flex:1;min-width:0">' +
-        '<div style="font-size:18px;font-weight:800;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + mainTxt + '</div>' +
-        '<div style="font-size:14px;color:#888;margin-top:4px">' + subTxt + '</div>' +
+        '<div style="font-size:22px;font-weight:800;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3">' + mainTxt + '</div>' +
+        '<div style="font-size:16px;color:#666;margin-top:6px;font-weight:600">' + subTxt + '</div>' +
       '</div>' + right +
     '</div>';
   });
