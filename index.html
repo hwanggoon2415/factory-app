@@ -914,10 +914,21 @@ function buildKpGrid() {
     g.appendChild(b);
   });
   var ok = document.createElement('button');
-  ok.className = 'nk ok kp-ok'; ok.textContent = '✓ 확인';
+  ok.className = 'nk ok kp-ok'; ok.textContent = '✓ 확인 (Enter)';
   ok.ontouchstart = function(e) { e.preventDefault(); closeKP(); };
   ok.onclick = closeKP;
   g.appendChild(ok);
+
+  // ★ PC 키보드 입력 지원
+  document.addEventListener('keydown', function(e) {
+    var sheet = document.getElementById('kpSheet');
+    if (!sheet || !sheet.classList.contains('on')) return;
+    if (e.key >= '0' && e.key <= '9') { kpPress(e.key); e.preventDefault(); }
+    else if (e.key === '.') { kpPress('.'); e.preventDefault(); }
+    else if (e.key === 'Backspace') { kpPress('del'); e.preventDefault(); }
+    else if (e.key === 'Enter') { closeKP(); e.preventDefault(); }
+    else if (e.key === 'Escape') { cancelKP(); e.preventDefault(); }
+  });
 }
 function fmtKp(v) {
   var parts = (v || '0').split('.');
