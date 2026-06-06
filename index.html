@@ -702,7 +702,7 @@ async function openList(mode) {
         '<span class="row-arrow">›</span>' +
         '<div class="row-title">' + meltNo + '</div>' +
         '<div class="row-sub">' + (first.material||'') + ' ' + (first.content||'-') + '%</div>' +
-        '<div style="font-size:17px;margin:6px 0 8px">총 <b>' + total + '</b>종 &nbsp;·&nbsp; <span style="color:#2e7d32">완성 <b>' + done + '</b></span> &nbsp;·&nbsp; <span style="color:#1565c0">남음 <b>' + remain + '</b></span></div>' +
+        '<div style="font-size:20px;font-weight:700;margin:8px 0 10px">총 <b>' + total + '</b>종 &nbsp;·&nbsp; <span style="color:#2e7d32">완성 <b>' + done + '</b></span> &nbsp;·&nbsp; <span style="color:#1565c0">남음 <b>' + remain + '</b></span></div>' +
         headHtml + rowsHtml;
       card.onclick = function() { openWireGroupInp(meltNo, remainRows); };
       body.appendChild(card);
@@ -728,9 +728,9 @@ function buildCard(r, mode) {
       '<div class="row-title">' + r.meltNo + '</div>' +
       '<div class="row-sub">' + (r.wireType||'-') + ' &nbsp;|&nbsp; ' + (r.material||'') + ' ' + (r.content||'-') + '%</div>' +
       '<div class="row-info">' +
-        '순은 <b>' + fmt(r.silver) + 'g</b>&nbsp; 알로이 <b>' + fmt(r.alloy) + 'g</b>&nbsp; 연주로 <b>' + fmt(r.furnace) + 'g</b><br>' +
-        '재말수령 <b>' + fmt(r.scrapRecv) + 'g</b>&nbsp; 재말투입 <b>' + fmt(r.scrapUse) + 'g</b>&nbsp; 재말잔량 <b>' + fmt(r.scrapLeft) + 'g</b><br>' +
-        '불량선재 <b>' + fmt(r.badWire) + 'g</b>&nbsp; 예상중량 <b style="color:#1565c0">' + fmt(r.wirePlan) + 'g</b>' +
+        '순은 <b>' + fmt(r.silver) + 'g</b>&nbsp;&nbsp; 알로이 <b>' + fmt(r.alloy) + 'g</b>&nbsp;&nbsp; 연주로 <b>' + fmt(r.furnace) + 'g</b><br>' +
+        '재말수령 <b>' + fmt(r.scrapRecv) + 'g</b>&nbsp;&nbsp; 재말투입 <b>' + fmt(r.scrapUse) + 'g</b>&nbsp;&nbsp; 재말잔량 <b>' + fmt(r.scrapLeft) + 'g</b><br>' +
+        '불량선재 <b>' + fmt(r.badWire) + 'g</b>&nbsp;&nbsp; 예상중량 <b style="color:#1565c0;font-size:20px">' + fmt(r.wirePlan) + 'g</b>' +
       '</div>';
   }
   if (mode === 'chain') {
@@ -738,7 +738,7 @@ function buildCard(r, mode) {
       '<div class="row-title">' + r.meltNo + '</div>' +
       '<div class="row-sub">' + (r.chainType||'-') + ' &nbsp;|&nbsp; ' + (r.wireType||'-') + '</div>' +
       '<div class="row-info">' +
-        '선재후중량 <b style="color:#2e7d32">' + fmt(r.wireReal) + 'g</b>&nbsp; 계획 <b>' + fmt(r.chainPlan) + 'g</b>' +
+        '선재후중량 <b style="color:#2e7d32;font-size:20px">' + fmt(r.wireReal) + 'g</b>&nbsp;&nbsp; 계획 <b>' + fmt(r.chainPlan) + 'g</b>' +
       '</div>';
   }
   if (mode === 'weld') {
@@ -746,10 +746,10 @@ function buildCard(r, mode) {
       '<div class="row-title">' + r.meltNo + '</div>' +
       '<div class="row-sub">' + (r.chainType||'-') + '</div>' +
       '<div class="row-info">' +
-        '체인생산 <b>' + fmt(r.chainProd) + 'g</b>&nbsp; 해리 <b style="color:#e53935">' + fmt(r.haeri) + 'g</b>' +
+        '체인생산 <b style="font-size:20px">' + fmt(r.chainProd) + 'g</b>&nbsp;&nbsp; 해리 <b style="color:#e53935;font-size:20px">' + fmt(r.haeri) + 'g</b>' +
       '</div>';
   }
-  var step = r.weldAfter ? '✅용접완료' : r.chainProd ? '⚙️기계완료' : r.wireReal ? '⚗️선재완료' : '📋대기';
+  var step = r.weldAfter ? '✅ 용접완료' : r.chainProd ? '⚙️ 기계완료' : r.wireReal ? '⚗️ 선재완료' : '📋 대기';
   return '<div class="row-title">' + r.meltNo + ' — ' + (r.wireType||'') + '</div>' +
     '<div class="row-sub">' + (r.material||'') + ' ' + (r.content||'-') + '% &nbsp;|&nbsp; ' + step + '</div>' +
     '<div class="row-info">' +
@@ -901,7 +901,7 @@ function openInp(mode, row) {
       '<div class="inp-card"><div class="inp-label">선재 종류</div><div class="inp-val">' + (row.wireType||'-') + '</div></div>' +
       '<div class="inp-card" style="background:#e8f5e9">' +
         '<div class="inp-label">📋 투입 재료 (관리부 계획)</div>' +
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;font-size:14px">' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;font-size:19px;font-weight:600">' +
           '<div>순은 <b>' + fmt(row.silver) + 'g</b></div>' +
           '<div>알로이 <b>' + fmt(row.alloy) + 'g</b></div>' +
           '<div>연주로잔량 <b>' + fmt(row.furnace) + 'g</b></div>' +
