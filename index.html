@@ -441,7 +441,18 @@ document.dispatchEvent(new Event('fbReady'));
 
 <script>
 var DEMO = false;
-var G_WIRE_ROWS = {}; // rowNum -> row data for KP access
+var G_WIRE_ROWS = {};
+var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby0HHpo0S9kcLS9wzhhUlJ0NmT15VUdz0IvLDPOGNldoOorbhr1GdoQkmdxEPbWCqjv/exec';
+
+// 구글 시트 직접 호출 (로그인/PIN 검증용)
+async function sheetGet(action, params) {
+  var url = new URL(SCRIPT_URL);
+  url.searchParams.set('action', action);
+  Object.keys(params).forEach(function(k) { url.searchParams.set(k, params[k]); });
+  url.searchParams.set('_', Date.now());
+  var r = await fetch(url.toString(), {redirect:'follow', cache:'no-store'});
+  return r.json();
+} // rowNum -> row data for KP access
 var S = {
   dept:null, deptName:null, deptColor:'#1565c0',
   user:null, loginPin:'', personalPin:'', personalCB:null,
@@ -1065,9 +1076,11 @@ async function doPinVerify() {
 
 async function apiGet(action, params) {
   var api = window._fbApi;
+  // 로그인/PIN 검증은 구글 시트 (설정시트) 사용
+  if (action === 'verifyDept') return sheetGet('verifyDept', params);
+  if (action === 'verifyEmp')  return sheetGet('verifyEmp', params);
+  // 공정 데이터는 Firebase (빠른 속도)
   if (action === 'getRows')          return { data: await api.fbGetRows(params.dept||'') };
-  if (action === 'verifyDept')       return api.fbVerifyDept(params.code, params.pw);
-  if (action === 'verifyEmp')        return api.fbVerifyEmp(params.pin, params.dept);
   if (action === 'getPendingWires')  return { data: await api.fbGetPendingWires() };
   if (action === 'getPendingChains') return { data: await api.fbGetPendingChains() };
   if (action === 'getWireLots')      return { data: await api.fbGetWireLots() };
