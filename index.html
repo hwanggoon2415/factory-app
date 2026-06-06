@@ -237,9 +237,11 @@ const DEMO = false;
 // 공정 행 목록 읽기
 async function fbGetRows(dept) {
   const colRef = collection(db, 'rows');
-  const q = query(colRef, orderBy('date','desc'));
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({rowNum: d.id.replace('row_',''), docId: d.id, ...d.data()}));
+  const snap = await getDocs(colRef);
+  const rows = snap.docs.map(d => ({rowNum: d.id.replace('row_',''), docId: d.id, ...d.data()}));
+  // 날짜 내림차순 정렬 (JS에서 처리)
+  rows.sort(function(a, b) { return (b.date||'').localeCompare(a.date||''); });
+  return rows;
 }
 
 // 부서 비밀번호 확인
