@@ -799,8 +799,8 @@ function openWireGroupInp(meltNo, rows) {
     html +=
       '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0f0f0;">' +
         '<div style="flex:1;min-width:0">' +
-          '<div style="font-size:20px;font-weight:800;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (row.wireType||'-') + '</div>' +
-          '<div style="font-size:15px;color:#777;margin-top:4px">예상 ' + fmt(row.wirePlan) + 'g</div>' +
+          '<div style="font-size:24px;font-weight:800;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (row.wireType||'-') + '</div>' +
+          '<div style="font-size:18px;color:#666;margin-top:6px;font-weight:600">예상 ' + fmt(row.wirePlan) + 'g</div>' +
         '</div>' +
         '<div class="inp-field grn" style="width:130px;flex-shrink:0;cursor:pointer" onclick="openKPWireByNum(' + row.rowNum + ')">' +
           '<span class="fv" id="' + fid + '">0</span>' +
@@ -1625,20 +1625,20 @@ function renderCheck() {
     return;
   }
   saveBtn.style.display = '';
-  var html = '<div class="inp-card"><div class="inp-label" style="margin-bottom:8px">' + srcLbl + '에서 넘어온 ' + (isChain ? '체인' : '선재') + ' · 측정중량 입력</div>';
+  var html = '<div class="inp-card"><div style="font-size:18px;font-weight:700;color:#555;margin-bottom:14px">' + srcLbl + '에서 넘어온 ' + (isChain ? '체인' : '선재') + ' · 측정중량 입력</div>';
   data.forEach(function(x) {
     var bad = x.status === '불일치';
     var cur = S.checkVals[x.no] || 0;
     var size = isChain ? (x.chainType || '-') : ((x.wtype || '-') + (x.cont ? '  ·  ' + x.cont + '%' : ''));
     html +=
-      '<div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #f0f0f0">' +
+      '<div style="display:flex;align-items:center;gap:12px;padding:18px 0;border-bottom:2px solid #eee">' +
         '<div style="flex:1;min-width:0">' +
-          '<div style="font-size:20px;font-weight:800;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + size + '</div>' +
-          '<div style="font-size:15px;color:#777;margin-top:4px">번호 ' + x.no + '</div>' +
-          '<div style="font-size:16px;color:#1565c0;margin-top:3px">' + srcLbl + ' ' + fmt(x.claimed) + 'g' + (bad ? ' <span style="color:#c62828">· 불일치 재확인</span>' : '') + '</div>' +
+          '<div style="font-size:24px;font-weight:800;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + size + '</div>' +
+          '<div style="font-size:18px;color:#666;margin-top:6px;font-weight:600">번호 ' + x.no + '</div>' +
+          '<div style="font-size:19px;color:#1565c0;margin-top:5px;font-weight:700">' + srcLbl + ' ' + fmt(x.claimed) + 'g' + (bad ? ' <span style="color:#c62828">· 불일치 재확인</span>' : '') + '</div>' +
         '</div>' +
-        '<div class="inp-field grn" style="width:140px;flex-shrink:0;cursor:pointer" onclick="openCheckKP(\'' + x.no + '\')">' +
-          '<span class="fv" id="chk_' + x.no + '">' + fmt(cur) + '</span><span class="fu" style="font-size:14px">g</span>' +
+        '<div class="inp-field grn" style="width:160px;height:64px;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:flex-end;padding:0 14px;border-radius:14px" onclick="openCheckKP(\'' + x.no + '\')">' +
+          '<span class="fv" id="chk_' + x.no + '" style="font-size:26px;font-weight:800">' + fmt(cur) + '</span><span class="fu" style="font-size:16px;margin-left:4px">g</span>' +
         '</div>' +
       '</div>';
   });
