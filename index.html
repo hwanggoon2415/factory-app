@@ -1076,10 +1076,9 @@ async function doPinVerify() {
 
 async function apiGet(action, params) {
   var api = window._fbApi;
-  // 로그인/PIN 검증은 구글 시트 (설정시트) 사용
-  if (action === 'verifyDept') return sheetGet('verifyDept', params);
-  if (action === 'verifyEmp')  return sheetGet('verifyEmp', params);
-  // 공정 데이터는 Firebase (빠른 속도)
+  // 모두 Firebase (빠른 속도) - 설정은 구글시트 수정 후 동기화 버튼으로 반영
+  if (action === 'verifyDept')       return api.fbVerifyDept(params.code, params.pw);
+  if (action === 'verifyEmp')        return api.fbVerifyEmp(params.pin, params.dept);
   if (action === 'getRows')          return { data: await api.fbGetRows(params.dept||'') };
   if (action === 'getPendingWires')  return { data: await api.fbGetPendingWires() };
   if (action === 'getPendingChains') return { data: await api.fbGetPendingChains() };
