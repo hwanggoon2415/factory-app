@@ -239,7 +239,7 @@ async function fbGetRows(dept) {
   const colRef = collection(db, 'rows');
   const q = query(colRef, orderBy('date','desc'));
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({rowNum: d.id, ...d.data()}));
+  return snap.docs.map(d => ({rowNum: d.id.replace('row_',''), docId: d.id, ...d.data()}));
 }
 
 // 부서 비밀번호 확인
@@ -266,7 +266,7 @@ async function fbVerifyEmp(pin, dept) {
 
 // 선재 후중량 저장 (단건)
 async function fbSaveWire(rowNum, weight, empName) {
-  const ref = doc(db, 'rows', String(rowNum));
+  const ref = doc(db, 'rows', 'row_' + rowNum);
   await updateDoc(ref, {wireReal: weight, wireEmp: empName, wireTs: serverTimestamp()});
   return {success:true};
 }
@@ -275,13 +275,13 @@ async function fbSaveWire(rowNum, weight, empName) {
 async function fbSaveWires(items, empName) {
   const batch = writeBatch(db);
   items.forEach(it => {
-    const ref = doc(db, 'rows', String(it.rowNum));
+    const ref = doc(db, 'rows', 'row_' + it.rowNum);
     batch.update(ref, {wireReal: it.weight, wireEmp: empName, wireTs: serverTimestamp()});
   });
   await batch.commit();
   // 선재 로트 생성
   for (const it of items) {
-    const rowSnap = await getDoc(doc(db,'rows',String(it.rowNum)));
+    const rowSnap = await getDoc(doc(db,'rows','row_' + it.rowNum));
     const row = rowSnap.data() || {};
     const lotNo = it.rowNum + '-W';
     await setDoc(doc(db,'wireLots', lotNo), {
@@ -293,7 +293,7 @@ async function fbSaveWires(items, empName) {
   }
   // 백그라운드로 구글 시트에도 반영
   for (const it of items) {
-    const rowSnap2 = await getDoc(doc(db,'rows',String(it.rowNum)));
+    const rowSnap2 = await getDoc(doc(db,'rows','row_' + it.rowNum));
     const row2 = rowSnap2.data() || {};
     syncToSheet('updateWireReal', {
       meltNo: row2.meltNo||'', wireType: row2.wireType||'',
@@ -389,7 +389,7 @@ async function fbSaveChainsBatch(items, empName) {
     }, {merge:true});
     // rows 업데이트
     if (wire.rowNum) {
-      await updateDoc(doc(db,'rows',String(wire.rowNum)), {chainProd: it.weight, haeri, chainEmp: empName, chainTs: serverTimestamp()});
+      await updateDoc(doc(db,'rows','row_' + wire.rowNum), {chainProd: it.weight, haeri, chainEmp: empName, chainTs: serverTimestamp()});
     }
     // 백그라운드로 구글 시트에도 반영
     syncToSheet('updateChainLot', {
