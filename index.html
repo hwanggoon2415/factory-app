@@ -441,6 +441,7 @@ document.dispatchEvent(new Event('fbReady'));
 
 <script>
 var DEMO = false;
+var G_WIRE_ROWS = {}; // rowNum -> row data for KP access
 var S = {
   dept:null, deptName:null, deptColor:'#1565c0',
   user:null, loginPin:'', personalPin:'', personalCB:null,
@@ -702,7 +703,7 @@ function openWireGroupInp(meltNo, rows) {
   var _in = document.getElementById('inpNav'); if (_in) _in.style.display = 'none';
   S.selRow = rows[0];
   S.fields = {wireWeights: {}};
-  rows.forEach(function(r) { S.fields.wireWeights[r.rowNum] = 0; });
+  rows.forEach(function(r) { S.fields.wireWeights[r.rowNum] = 0; G_WIRE_ROWS[r.rowNum] = r; });
 
   document.getElementById('inpTitle').textContent = '선재 실중량 입력';
   document.getElementById('inpHdr').style.background = S.deptColor;
@@ -739,7 +740,7 @@ function openWireGroupInp(meltNo, rows) {
           '<div style="font-size:16px;font-weight:700;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (row.wireType||'-') + '</div>' +
           '<div style="font-size:12px;color:#888;margin-top:2px">예상 ' + fmt(row.wirePlan) + 'g</div>' +
         '</div>' +
-        '<div class="inp-field grn" style="width:130px;flex-shrink:0;cursor:pointer" onclick="openKPWire(' + row.rowNum + ',' + JSON.stringify(row.wireType||'선재') + ')">' +
+        '<div class="inp-field grn" style="width:130px;flex-shrink:0;cursor:pointer" onclick="openKPWireByNum(' + row.rowNum + ')">' +
           '<span class="fv" id="' + fid + '">0</span>' +
           '<span class="fu" style="font-size:14px">g</span>' +
         '</div>' +
@@ -756,6 +757,11 @@ function openWireGroupInp(meltNo, rows) {
   show('inpSc');
 }
 
+function openKPWireByNum(rowNum) {
+  var row = G_WIRE_ROWS[rowNum];
+  var label = row ? (row.wireType || '선재') : '선재';
+  openKPWire(rowNum, label);
+}
 function openKPWire(rowNum, label) {
   S.kpField = 'ww_' + rowNum;
   S.kpVal = S.fields.wireWeights[rowNum] ? String(S.fields.wireWeights[rowNum]) : '';
