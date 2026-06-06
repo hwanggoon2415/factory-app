@@ -249,7 +249,8 @@ async function fbVerifyDept(code, pw) {
   const ref = doc(db, 'depts', code);
   const snap = await getDoc(ref);
   if (!snap.exists()) return {success:false};
-  return snap.data().pw === pw ? {success:true} : {success:false};
+  // 문자열로 변환해서 비교
+  return String(snap.data().pw) === String(pw) ? {success:true} : {success:false};
 }
 
 // 작업자 PIN 확인
