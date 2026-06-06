@@ -25,7 +25,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;heigh
 .divline{height:1px;background:#e0e0e0;margin:2px 0;}
 .pin-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px;}
 .pin-title{font-size:24px;font-weight:700;color:#111;}
-.pin-sub{font-size:16px;color:#777;}
+.pin-sub{font-size:19px;color:#666;}
 .pin-dots{display:flex;gap:14px;}
 .pin-dot{width:20px;height:20px;border-radius:50%;border:3px solid #1565c0;background:transparent;}
 .pin-dot.on{background:#1565c0;}
@@ -38,7 +38,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;heigh
 .menu-btn:active{background:#f5f5f5;}
 .menu-btn .mico{font-size:30px;flex-shrink:0;}
 .menu-btn .mtitle{font-size:20px;font-weight:700;color:#111;}
-.menu-btn .mdesc{font-size:13px;color:#999;margin-top:3px;}
+.menu-btn .mdesc{font-size:16px;color:#888;margin-top:4px;}
 .row-card{background:#fff;border-radius:14px;padding:20px;box-shadow:0 3px 10px rgba(0,0,0,.07);cursor:pointer;border-left:6px solid #e0e0e0;}
 .row-card:active{background:#f0f0f0;}
 .row-title{font-size:24px;font-weight:800;color:#111;margin-bottom:6px;}
@@ -71,7 +71,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;heigh
 .pin-ovl.on{display:flex;}
 .pin-box{background:#fff;border-radius:20px;padding:26px 20px;width:92%;max-width:360px;display:flex;flex-direction:column;align-items:center;gap:12px;}
 .pin-box-t{font-size:20px;font-weight:700;color:#111;}
-.pin-box-s{font-size:14px;color:#888;}
+.pin-box-s{font-size:17px;color:#777;}
 .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.82);color:#fff;padding:13px 22px;border-radius:28px;font-size:16px;z-index:300;display:none;max-width:90vw;text-align:center;}
 .toast.on{display:block;}
 .toast.ok{background:#2e7d32;}
@@ -89,18 +89,18 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;heigh
 .lot-card{background:#fff;border-radius:12px;padding:13px 14px;box-shadow:0 2px 8px rgba(0,0,0,.07);cursor:pointer;border-left:5px solid #e0e0e0;display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;}
 .lot-card.sel{border-left-color:#2e7d32;background:#e8f5e9;}
 .lot-card .ln{font-size:17px;font-weight:700;color:#111;}
-.lot-card .ls{font-size:12px;color:#888;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.lot-card .lr{font-size:15px;font-weight:700;color:#1565c0;white-space:nowrap;text-align:right;}
+.lot-card .ls{font-size:15px;color:#888;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.lot-card .lr{font-size:19px;font-weight:800;color:#1565c0;white-space:nowrap;text-align:right;}
 .lot-card.sel .lr{color:#2e7d32;}
 .basket{flex-shrink:0;background:#fff;border-top:1px solid #e0e0e0;padding:12px 16px;max-height:40vh;overflow-y:auto;box-shadow:0 -3px 10px rgba(0,0,0,.05);}
-.basket .bt{font-size:14px;font-weight:700;color:#555;margin-bottom:6px;}
-.bchip{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px dashed #eee;font-size:15px;color:#111;}
+.basket .bt{font-size:18px;font-weight:800;color:#444;margin-bottom:8px;}
+.bchip{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px dashed #eee;font-size:18px;color:#111;}
 .bchip .bx{color:#c62828;font-size:20px;cursor:pointer;padding:0 8px;}
-.bsum{display:flex;justify-content:space-between;font-size:16px;font-weight:700;margin-top:8px;color:#111;}
+.bsum{display:flex;justify-content:space-between;font-size:20px;font-weight:800;margin-top:10px;color:#111;}
 .bfield{display:flex;justify-content:space-between;align-items:center;border:2.5px solid #2e7d32;border-radius:10px;padding:11px 14px;margin-top:10px;cursor:pointer;}
 .bfield .bfv{font-size:23px;font-weight:700;color:#2e7d32;}
-.bcalc{font-size:14px;color:#666;margin-top:8px;text-align:right;}
-.invbtn{flex-shrink:0;border:none;border-radius:9px;padding:9px 12px;font-size:14px;font-weight:700;cursor:pointer;}
+.bcalc{font-size:17px;color:#555;margin-top:10px;text-align:right;}
+.invbtn{flex-shrink:0;border:none;border-radius:9px;padding:12px 16px;font-size:17px;font-weight:700;cursor:pointer;}
 .invbtn.cx{background:#fde8e8;color:#c62828;}
 .invbtn.rs{background:#e8f1fd;color:#1565c0;}
 .navtabs{display:flex;gap:8px;flex-shrink:0;padding:8px 16px 4px;}
@@ -702,7 +702,7 @@ async function openList(mode) {
         '<span class="row-arrow">›</span>' +
         '<div class="row-title">' + meltNo + '</div>' +
         '<div class="row-sub">' + (first.material||'') + ' ' + (first.content||'-') + '%</div>' +
-        '<div style="font-size:13px;margin:4px 0 6px">총 <b>' + total + '</b>종 &nbsp;·&nbsp; <span style="color:#2e7d32">완성 <b>' + done + '</b></span> &nbsp;·&nbsp; <span style="color:#1565c0">남음 <b>' + remain + '</b></span></div>' +
+        '<div style="font-size:17px;margin:6px 0 8px">총 <b>' + total + '</b>종 &nbsp;·&nbsp; <span style="color:#2e7d32">완성 <b>' + done + '</b></span> &nbsp;·&nbsp; <span style="color:#1565c0">남음 <b>' + remain + '</b></span></div>' +
         headHtml + rowsHtml;
       card.onclick = function() { openWireGroupInp(meltNo, remainRows); };
       body.appendChild(card);
@@ -799,8 +799,8 @@ function openWireGroupInp(meltNo, rows) {
     html +=
       '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0f0f0;">' +
         '<div style="flex:1;min-width:0">' +
-          '<div style="font-size:16px;font-weight:700;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (row.wireType||'-') + '</div>' +
-          '<div style="font-size:12px;color:#888;margin-top:2px">예상 ' + fmt(row.wirePlan) + 'g</div>' +
+          '<div style="font-size:20px;font-weight:800;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (row.wireType||'-') + '</div>' +
+          '<div style="font-size:15px;color:#777;margin-top:4px">예상 ' + fmt(row.wirePlan) + 'g</div>' +
         '</div>' +
         '<div class="inp-field grn" style="width:130px;flex-shrink:0;cursor:pointer" onclick="openKPWireByNum(' + row.rowNum + ')">' +
           '<span class="fv" id="' + fid + '">0</span>' +
@@ -1435,7 +1435,7 @@ function renderBasket() {
   var prodLbl = S.lotKind === 'chain' ? '체인 생산중량' : '용접 후중량';
   var prod = S.fields.prodWeight || 0;
   var html = '<div class="bt">투입 목록 (' + keys.length + ')</div>';
-  if (!keys.length) html += '<div style="color:#bbb;font-size:14px;padding:6px 0">위 목록에서 번호를 눌러 추가하세요</div>';
+  if (!keys.length) html += '<div style="color:#bbb;font-size:17px;padding:8px 0">위 목록에서 번호를 눌러 추가하세요</div>';
   keys.forEach(function(k) {
     var lot = S.basket[k].lot || {};
     var sz = S.lotKind === 'chain' ? (lot.wtype||'') : (lot.chainType||'');
@@ -1443,7 +1443,7 @@ function renderBasket() {
     html += '<div class="bchip"><span>' + lab + ' &nbsp;<b>' + fmt(S.basket[k].used) + 'g</b></span><span class="bx" onclick="removeBasket(\'' + k + '\')">✕</span></div>';
   });
   html += '<div class="bsum"><span>투입 합계</span><span>' + fmt(sum) + 'g</span></div>';
-  html += '<div class="bfield" onclick="openProdKP()"><span style="font-size:14px;color:#777">' + prodLbl + '</span><span class="bfv">' + fmt(prod) + 'g</span></div>';
+  html += '<div class="bfield" onclick="openProdKP()"><span style="font-size:17px;color:#666">' + prodLbl + '</span><span class="bfv">' + fmt(prod) + 'g</span></div>';
   if (prod > 0 && keys.length) {
     if (S.lotKind === 'chain') html += '<div class="bcalc">해리 = 투입 − 생산 = <b style="color:#e53935">' + fmt(sum - prod) + 'g</b></div>';
     else html += '<div class="bcalc">증가량(용접약) = <b style="color:#2e7d32">' + fmt(prod - sum) + 'g</b></div>';
@@ -1516,7 +1516,7 @@ async function openInventory() {
 function invCardSection(title, kind, list) {
   var wrap = document.createElement('div');
   var h = '<div class="row-title" style="margin:8px 0 8px">' + title + ' (' + list.length + ')</div>';
-  if (!list.length) h += '<div style="color:#bbb;font-size:14px;margin-bottom:12px">항목 없음</div>';
+  if (!list.length) h += '<div style="color:#bbb;font-size:17px;margin-bottom:12px">항목 없음</div>';
   list.forEach(function(x) {
     var st = x.status || '사용가능';
     var cancelled = (st === '취소');
@@ -1529,7 +1529,7 @@ function invCardSection(title, kind, list) {
       ? '<button class="invbtn rs" onclick="lotRestore(\'' + kind + '\',\'' + x.no + '\')">↩ 복구</button>'
       : '<button class="invbtn cx" onclick="lotCancel(\'' + kind + '\',\'' + x.no + '\')">🗑 취소</button>';
     h += '<div class="row-card" style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;padding:12px 14px;border-left-color:' + S.deptColor + (cancelled ? ';opacity:.5' : '') + '">' +
-         '<div style="font-size:14px;color:#333;min-width:0">' + info + badge + '</div>' + btn + '</div>';
+         '<div style="font-size:17px;color:#333;min-width:0">' + info + badge + '</div>' + btn + '</div>';
   });
   wrap.innerHTML = h; return wrap;
 }
@@ -1550,9 +1550,9 @@ async function sendCancel(kind, no, restore) {
 function invSection(title, lines) {
   var wrap = document.createElement('div');
   var h = '<div class="row-title" style="margin:8px 0 8px">' + title + '</div>';
-  if (!lines.length) h += '<div style="color:#bbb;font-size:14px;margin-bottom:12px">항목 없음</div>';
+  if (!lines.length) h += '<div style="color:#bbb;font-size:17px;margin-bottom:12px">항목 없음</div>';
   else lines.forEach(function(t) {
-    h += '<div class="row-card" style="border-left-color:' + S.deptColor + ';margin-bottom:8px;padding:12px 14px"><div style="font-size:15px;color:#333">' + t + '</div></div>';
+    h += '<div class="row-card" style="border-left-color:' + S.deptColor + ';margin-bottom:8px;padding:12px 14px"><div style="font-size:18px;color:#333">' + t + '</div></div>';
   });
   wrap.innerHTML = h; return wrap;
 }
@@ -1633,9 +1633,9 @@ function renderCheck() {
     html +=
       '<div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #f0f0f0">' +
         '<div style="flex:1;min-width:0">' +
-          '<div style="font-size:16px;font-weight:700;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + size + '</div>' +
-          '<div style="font-size:12px;color:#888;margin-top:2px">번호 ' + x.no + '</div>' +
-          '<div style="font-size:13px;color:#1565c0;margin-top:3px">' + srcLbl + ' ' + fmt(x.claimed) + 'g' + (bad ? ' <span style="color:#c62828">· 불일치 재확인</span>' : '') + '</div>' +
+          '<div style="font-size:20px;font-weight:800;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + size + '</div>' +
+          '<div style="font-size:15px;color:#777;margin-top:4px">번호 ' + x.no + '</div>' +
+          '<div style="font-size:16px;color:#1565c0;margin-top:3px">' + srcLbl + ' ' + fmt(x.claimed) + 'g' + (bad ? ' <span style="color:#c62828">· 불일치 재확인</span>' : '') + '</div>' +
         '</div>' +
         '<div class="inp-field grn" style="width:140px;flex-shrink:0;cursor:pointer" onclick="openCheckKP(\'' + x.no + '\')">' +
           '<span class="fv" id="chk_' + x.no + '">' + fmt(cur) + '</span><span class="fu" style="font-size:14px">g</span>' +
@@ -1728,7 +1728,7 @@ function renderOrderScreen() {
   var rowsHtml = (G_ORDER.rows||[]).map(function(r, i) {
     return '<div style="background:#f8f9fa;border-radius:10px;padding:12px;margin-top:8px;position:relative">' +
       '<button onclick="removeOrderRow(' + i + ')" style="position:absolute;top:8px;right:8px;background:#fde8e8;border:none;border-radius:6px;padding:4px 8px;color:#c62828;cursor:pointer;font-size:13px">✕</button>' +
-      '<div style="font-size:13px;color:#999;margin-bottom:4px">선재 ' + (i+1) + '번</div>' +
+      '<div style="font-size:16px;color:#888;margin-bottom:6px">선재 ' + (i+1) + '번</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:14px">' +
         '<div>선재종류: <b>' + (r.wireType||'-') + '</b></div>' +
         '<div>예상중량: <b>' + fmt(r.wirePlan) + 'g</b></div>' +
@@ -1815,13 +1815,13 @@ function openAddRowSheet() {
       '<button onclick="closeAddRow()" style="background:none;border:none;font-size:24px;color:#aaa;cursor:pointer">✕</button>' +
     '</div>' +
     '<div style="display:flex;flex-direction:column;gap:10px">' +
-      '<div><div style="font-size:13px;color:#999;margin-bottom:4px">선재 종류 (예: 1.0mm 순은선)</div>' +
+      '<div><div style="font-size:16px;color:#888;margin-bottom:6px">선재 종류 (예: 1.0mm 순은선)</div>' +
         '<input id="nr_wireType_inp" style="width:100%;font-size:18px;border:2px solid #ddd;border-radius:8px;padding:10px;outline:none" placeholder="1.0mm 순은선" oninput="G_NEWROW.wireType=this.value"></div>' +
-      '<div><div style="font-size:13px;color:#999;margin-bottom:4px">예상 중량(g)</div>' +
+      '<div><div style="font-size:16px;color:#888;margin-bottom:6px">예상 중량(g)</div>' +
         '<div class="inp-field grn" onclick="openAddRowKP(\'wirePlan\',\'예상중량\')"><span class="fv" id="nr_wirePlan" style="font-size:22px">0</span><span class="fu">g</span></div></div>' +
-      '<div><div style="font-size:13px;color:#999;margin-bottom:4px">체인 종류 (예: FC-80)</div>' +
+      '<div><div style="font-size:16px;color:#888;margin-bottom:6px">체인 종류 (예: FC-80)</div>' +
         '<input id="nr_chainType_inp" style="width:100%;font-size:18px;border:2px solid #ddd;border-radius:8px;padding:10px;outline:none" placeholder="FC-80" oninput="G_NEWROW.chainType=this.value"></div>' +
-      '<div><div style="font-size:13px;color:#999;margin-bottom:4px">체인 길이(m)</div>' +
+      '<div><div style="font-size:16px;color:#888;margin-bottom:6px">체인 길이(m)</div>' +
         '<input id="nr_chainLen_inp" style="width:100%;font-size:18px;border:2px solid #ddd;border-radius:8px;padding:10px;outline:none" placeholder="45" oninput="G_NEWROW.chainLen=this.value"></div>' +
       '<button onclick="confirmAddRow()" style="width:100%;padding:16px;background:#1565c0;color:#fff;border:none;border-radius:12px;font-size:18px;font-weight:700;cursor:pointer;margin-top:4px">✅ 추가</button>' +
     '</div></div>';
@@ -1923,25 +1923,25 @@ async function loadSetupData() {
       {code:'OUTSOURCE',name:'외주',color:'#546e7a'},
     ];
 
-    var html = '<div class="inp-card"><div class="inp-label" style="margin-bottom:10px;font-size:15px;font-weight:700">🔑 부서 비밀번호 (4자리)</div>' +
+    var html = '<div class="inp-card"><div class="inp-label" style="margin-bottom:10px;font-size:19px;font-weight:800">🔑 부서 비밀번호 (4자리)</div>' +
       deptList.map(function(d){
         var pw = depts[d.code] ? depts[d.code].pw : '';
         return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0f0f0">' +
-          '<div style="flex:1;font-size:16px;font-weight:700;color:' + d.color + '">' + d.name + '</div>' +
+          '<div style="flex:1;font-size:20px;font-weight:800;color:' + d.color + '">' + d.name + '</div>' +
           '<input id="dpw_' + d.code + '" maxlength="4" style="width:90px;font-size:18px;font-weight:700;border:2px solid #ddd;border-radius:8px;padding:8px;text-align:center;outline:none" placeholder="0000" value="' + pw + '">' +
-          '<button onclick="saveDeptPw(\'' + d.code + '\')" style="background:#1565c0;color:#fff;border:none;border-radius:8px;padding:9px 12px;font-size:14px;font-weight:700;cursor:pointer">저장</button>' +
+          '<button onclick="saveDeptPw(\'' + d.code + '\')" style="background:#1565c0;color:#fff;border:none;border-radius:8px;padding:9px 12px;font-size:17px;font-weight:700;cursor:pointer">저장</button>' +
         '</div>';
       }).join('') +
     '</div>' +
 
     '<div class="inp-card" style="margin-top:0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">' +
-      '<div style="font-size:15px;font-weight:700">👷 작업자 등록</div>' +
-      '<button onclick="openAddEmp()" style="background:#2e7d32;color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:14px;font-weight:700;cursor:pointer">+ 추가</button>' +
+      '<div style="font-size:19px;font-weight:800">👷 작업자 등록</div>' +
+      '<button onclick="openAddEmp()" style="background:#2e7d32;color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:17px;font-weight:700;cursor:pointer">+ 추가</button>' +
     '</div>' +
     (emps.length ? emps.map(function(e){
       return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0f0f0">' +
         '<div style="flex:1"><div style="font-size:16px;font-weight:700">' + e.name + '</div>' +
-          '<div style="font-size:13px;color:#888">PIN: ' + e.pin + ' · ' + e.dept + '</div></div>' +
+          '<div style="font-size:16px;color:#777">PIN: ' + e.pin + ' · ' + e.dept + '</div></div>' +
         '<button onclick="deleteEmp(\'' + e.id + '\')" style="background:#fde8e8;color:#c62828;border:none;border-radius:8px;padding:8px 10px;font-size:13px;cursor:pointer">삭제</button>' +
       '</div>';
     }).join('') : '<div style="color:#bbb;font-size:14px">등록된 작업자가 없습니다</div>') +
@@ -1974,11 +1974,11 @@ function openAddEmp() {
       '<button onclick="closeAddRow()" style="background:none;border:none;font-size:24px;color:#aaa;cursor:pointer">✕</button>' +
     '</div>' +
     '<div style="display:flex;flex-direction:column;gap:12px">' +
-      '<div><div style="font-size:13px;color:#999;margin-bottom:4px">이름</div>' +
+      '<div><div style="font-size:16px;color:#888;margin-bottom:6px">이름</div>' +
         '<input id="emp_name" style="width:100%;font-size:18px;border:2px solid #ddd;border-radius:8px;padding:10px;outline:none" placeholder="홍길동"></div>' +
-      '<div><div style="font-size:13px;color:#999;margin-bottom:4px">4자리 PIN</div>' +
+      '<div><div style="font-size:16px;color:#888;margin-bottom:6px">4자리 PIN</div>' +
         '<input id="emp_pin" type="number" maxlength="4" style="width:100%;font-size:22px;font-weight:700;border:2px solid #ddd;border-radius:8px;padding:10px;outline:none" placeholder="1234"></div>' +
-      '<div><div style="font-size:13px;color:#999;margin-bottom:4px">소속 부서</div>' +
+      '<div><div style="font-size:16px;color:#888;margin-bottom:6px">소속 부서</div>' +
         '<select id="emp_dept" style="width:100%;font-size:18px;border:2px solid #ddd;border-radius:8px;padding:10px;outline:none">' +
           deptList.map(function(d){ return '<option value="' + d + '">' + d + '</option>'; }).join('') +
         '</select></div>' +
