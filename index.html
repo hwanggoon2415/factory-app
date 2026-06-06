@@ -1302,15 +1302,15 @@ function renderProduceList(box, list) {
     var subTxt = isChain ? ('선재 ' + fmt(l.left) + 'g · ' + l.no) : ('번호 ' + l.no + ' · 체인 ' + fmt(l.left) + 'g');
     var curLen = (S.prodLens && S.prodLens[l.no]) || 0;
     var right = active
-      ? '<div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">' +
-          '<div class="inp-field grn" style="width:130px;cursor:pointer" onclick="openProduceKP(\'' + l.no + '\')"><span class="fv" id="pv_' + l.no + '">' + fmt(cur) + '</span><span class="fu" style="font-size:13px">g</span></div>' +
-          (isChain ? '<div class="inp-field" style="width:130px;cursor:pointer;background:#e8f5e9;border:2px solid #43a047" onclick="openProduceLenKP(\'' + l.no + '\')"><span class="fv" id="pl_' + l.no + '" style="font-size:18px">' + (curLen||0) + '</span><span class="fu" style="font-size:13px">m</span></div>' : '') +
+      ? '<div style="display:flex;flex-direction:column;gap:10px;flex-shrink:0">' +
+          '<div class="inp-field grn" style="width:160px;height:64px;cursor:pointer;display:flex;align-items:center;justify-content:flex-end;padding:0 14px;border-radius:14px;border:2.5px solid #2e7d32" onclick="openProduceKP(\'' + l.no + '\')"><span class="fv" id="pv_' + l.no + '" style="font-size:26px;font-weight:800">' + fmt(cur) + '</span><span class="fu" style="font-size:16px;margin-left:4px">g</span></div>' +
+          (isChain ? '<div class="inp-field" style="width:160px;height:64px;cursor:pointer;display:flex;align-items:center;justify-content:flex-end;padding:0 14px;border-radius:14px;background:#e8f5e9;border:2.5px solid #43a047" onclick="openProduceLenKP(\'' + l.no + '\')"><span class="fv" id="pl_' + l.no + '" style="font-size:26px;font-weight:800">' + (curLen||0) + '</span><span class="fu" style="font-size:16px;margin-left:4px">m</span></div>' : '') +
         '</div>'
-      : '<div style="width:130px;flex-shrink:0;text-align:right;color:#e69500;font-weight:700;font-size:13px">입고확인 대기</div>';
-    html += '<div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #f0f0f0' + (active ? '' : ';opacity:.5') + '">' +
+      : '<div style="width:160px;flex-shrink:0;text-align:right;color:#e69500;font-weight:700;font-size:15px">입고확인 대기</div>';
+    html += '<div style="display:flex;align-items:center;gap:12px;padding:16px 0;border-bottom:2px solid #f0f0f0' + (active ? '' : ';opacity:.5') + '">' +
       '<div style="flex:1;min-width:0">' +
-        '<div style="font-size:16px;font-weight:700;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + mainTxt + '</div>' +
-        '<div style="font-size:12px;color:#888;margin-top:2px">' + subTxt + '</div>' +
+        '<div style="font-size:18px;font-weight:800;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + mainTxt + '</div>' +
+        '<div style="font-size:14px;color:#888;margin-top:4px">' + subTxt + '</div>' +
       '</div>' + right +
     '</div>';
   });
