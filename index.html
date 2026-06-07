@@ -283,16 +283,24 @@ async function fbSaveWires(items, empName) {
     batch.update(ref, {wireReal: it.weight, wireEmp: empName, wireTs: serverTimestamp()});
   });
   await batch.commit();
-  // 선재 로트 생성
+  // 선재 로트 생성 (items에 row 데이터 포함)
   for (const it of items) {
-    const rowSnap = await getDoc(doc(db,'rows','row_' + it.rowNum));
-    const row = rowSnap.data() || {};
-    const lotNo = it.rowNum + '-W';
+    const lotNo = String(it.rowNum) + '-W';
     await setDoc(doc(db,'wireLots', lotNo), {
-      no: lotNo, meltNo: row.meltNo||'', rowNum: it.rowNum,
-      wtype: row.wireType||'', cont: row.content||'', mat: row.material||'',
-      left: it.weight, chainType: row.chainType||'', chainLen: row.chainLen||'', chainWt: row.chainWt||0,
-      status: '검수대기', claimed: it.weight, emp: empName, ts: serverTimestamp()
+      no: lotNo,
+      meltNo: it.meltNo||'',
+      rowNum: it.rowNum,
+      wtype: it.wireType||'',
+      cont: it.content||'',
+      mat: it.material||'',
+      left: it.weight,
+      chainType: it.chainType||'',
+      chainLen: it.chainLen||'',
+      chainWt: it.chainWt||0,
+      status: '사용가능',
+      claimed: it.weight,
+      emp: empName,
+      ts: serverTimestamp()
     }, {merge:true});
   }
   // 백그라운드로 구글 시트에도 반영
@@ -837,7 +845,13 @@ async function doSaveWireGroup(rows) {
   var emp = S.user ? S.user.name : '미확인';
   var meltNo = rows[0].meltNo;
   var items = rows.map(function(row) {
-    return {rowNum: row.rowNum, weight: S.fields.wireWeights[row.rowNum] || 0};
+    return {
+      rowNum: row.rowNum,
+      weight: S.fields.wireWeights[row.rowNum] || 0,
+      meltNo: row.meltNo||'', wireType: row.wireType||'',
+      material: row.material||'', content: row.content||'',
+      chainType: row.chainType||'', chainLen: row.chainLen||'', chainWt: row.chainWt||0
+    };
   }).filter(function(it) { return it.weight > 0; });
   if (!items.length) { toast('⚠️ 입력된 실중량이 없습니다', 2000, 'err'); return; }
 
