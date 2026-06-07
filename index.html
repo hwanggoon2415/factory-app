@@ -1607,8 +1607,20 @@ function invCardSection(title, kind, list) {
   wrap.innerHTML = h; return wrap;
 }
 
-function lotCancel(kind, no) { requirePin(function() { sendCancel(kind, no, false); }); }
-function lotRestore(kind, no) { sendCancel(kind, no, true); }
+function lotCancel(kind, no) {
+  showConfirmPopup(
+    '🗑 정말 취소하시겠습니까?\n\n취소된 항목은 재고에서 제외됩니다.\n복구 버튼으로 되돌릴 수 있습니다.',
+    function() { requirePin(function() { sendCancel(kind, no, false); }); },
+    function() { return; }
+  );
+}
+function lotRestore(kind, no) {
+  showConfirmPopup(
+    '↩ 이 항목을 복구하시겠습니까?\n\n복구하면 재고에 다시 포함됩니다.',
+    function() { requirePin(function() { sendCancel(kind, no, true); }); },
+    function() { return; }
+  );
+}
 async function sendCancel(kind, no, restore) {
   showLoad();
   if (DEMO) { await sleep(300); hideLoad(); toast(restore ? '↩ 복구됨 (데모)' : '🗑 취소됨 (데모)', 1500, 'ok'); openInventory(); return; }
@@ -1616,7 +1628,12 @@ async function sendCancel(kind, no, restore) {
     var emp = S.user ? S.user.name : '관리부';
     var r = await apiPost({action:'cancelLot', kind:kind, no:no, restore:restore, empName:emp});
     hideLoad();
-    if (r.success) { toast(restore ? '↩ 복구되었습니다' : '🗑 취소되었습니다', 1600, 'ok'); openInventory(); }
+    if (r.success) {
+      // 구글 시트에도 반영
+      syncToSheet('updateWireLot', {no:no, status: restore ? '사용가능' : '취소', emp:emp});
+      toast(restore ? '↩ 복구되었습니다' : '🗑 취소되었습니다', 1600, 'ok');
+      openInventory();
+    }
     else toast('❌ ' + (r.error || '실패'), 2500, 'err');
   } catch(e) { hideLoad(); toast('❌ 연결 오류', 2500, 'err'); }
 }
@@ -1703,14 +1720,15 @@ function renderCheck() {
     var bad = x.status === '불일치';
     var cur = S.checkVals[x.no] || 0;
     var size = isChain ? (x.chainType || '-') : ((x.wtype || '-') + (x.cont ? '  ·  ' + x.cont + '%' : ''));
+    var lenTxt = (isChain && x.chainLen) ? '<span style="color:#1565c0;font-weight:700;margin-left:10px;font-size:20px">' + x.chainLen + 'm</span>' : '';
     html +=
       '<div style="display:flex;align-items:center;gap:12px;padding:18px 0;border-bottom:2px solid #eee">' +
         '<div style="flex:1;min-width:0">' +
-          '<div style="font-size:24px;font-weight:800;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + size + '</div>' +
+          '<div style="font-size:24px;font-weight:800;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + size + lenTxt + '</div>' +
           '<div style="font-size:18px;color:#666;margin-top:6px;font-weight:600">번호 ' + x.no + '</div>' +
           '<div style="font-size:19px;color:#1565c0;margin-top:5px;font-weight:700">' + srcLbl + ' ' + fmt(x.claimed) + 'g' + (bad ? ' <span style="color:#c62828">· 불일치 재확인</span>' : '') + '</div>' +
         '</div>' +
-        '<div class="inp-field grn" style="width:160px;height:64px;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:flex-end;padding:0 14px;border-radius:14px" onclick="openCheckKP(\'' + x.no + '\')">' +
+        '<div class="inp-field grn" style="width:160px;height:64px;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:flex-end;padding:0 14px;border-radius:14px" onclick="openCheckKP(\'' + x.no + '\')">'+
           '<span class="fv" id="chk_' + x.no + '" style="font-size:26px;font-weight:800">' + fmt(cur) + '</span><span class="fu" style="font-size:16px;margin-left:4px">g</span>' +
         '</div>' +
       '</div>';
