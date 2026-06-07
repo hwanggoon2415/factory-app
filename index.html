@@ -554,8 +554,12 @@ function initApp() {
 // Firebase 준비 완료 후 앱 초기화
 if (window._fbReady) {
   initApp();
+  requestNotificationPermission();
 } else {
-  document.addEventListener('fbReady', initApp);
+  document.addEventListener('fbReady', function() {
+    initApp();
+    requestNotificationPermission();
+  });
 }
 
 function setDateBars() {
@@ -1968,6 +1972,32 @@ async function pollCheck() {
   S.pendData = data;
   renderCheck();
   toast('🔄 새 항목 도착 · 목록 갱신', 1600, 'ok');
+  // 브라우저 알림
+  sendNotification(
+    S.checkKind === 'chain' ? '⛓️ 체인 입고' : '📥 선재 입고',
+    S.checkKind === 'chain' ? '기계실에서 체인이 넘어왔어요!' : '자재실에서 선재가 넘어왔어요!'
+  );
+}
+
+// 브라우저 푸시 알림
+function sendNotification(title, body) {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'granted') {
+    new Notification(title, {body: body, icon: '🏭'});
+  } else if (Notification.permission !== 'denied') {
+    Notification.requestPermission().then(function(permission) {
+      if (permission === 'granted') {
+        new Notification(title, {body: body, icon: '🏭'});
+      }
+    });
+  }
+}
+
+// 앱 시작시 알림 권한 요청
+function requestNotificationPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
 }
 
 function renderCheck() {
