@@ -325,16 +325,14 @@ async function fbSaveWires(items, empName) {
 
 // 입고확인 대기 선재 로트
 async function fbGetPendingWires() {
-  const q = query(collection(db,'wireLots'), where('status','in',['검수대기','불일치']));
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({...d.data()}));
+  const snap = await getDocs(collection(db,'wireLots'));
+  return snap.docs.map(d => ({...d.data()})).filter(d => d.status === '검수대기' || d.status === '불일치');
 }
 
 // 입고확인 대기 체인 로트
 async function fbGetPendingChains() {
-  const q = query(collection(db,'chainLots'), where('status','in',['검수대기','불일치']));
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({...d.data()}));
+  const snap = await getDocs(collection(db,'chainLots'));
+  return snap.docs.map(d => ({...d.data()})).filter(d => d.status === '검수대기' || d.status === '불일치');
 }
 
 // 선재 입고확인 저장
@@ -369,16 +367,14 @@ async function fbConfirmChains(items, empName) {
 
 // 사용 가능 선재 로트 (기계실 체인생산용)
 async function fbGetWireLots() {
-  const q = query(collection(db,'wireLots'), where('status','==','사용가능'));
-  const snap = await getDocs(q);
-  return snap.docs.map(d => d.data());
+  const snap = await getDocs(collection(db,'wireLots'));
+  return snap.docs.map(d => d.data()).filter(d => d.status === '사용가능');
 }
 
 // 사용 가능 체인 로트 (용접실용)
 async function fbGetChainLots() {
-  const q = query(collection(db,'chainLots'), where('status','==','사용가능'));
-  const snap = await getDocs(q);
-  return snap.docs.map(d => d.data());
+  const snap = await getDocs(collection(db,'chainLots'));
+  return snap.docs.map(d => d.data()).filter(d => d.status === '사용가능');
 }
 
 // 체인 생산중량 일괄 저장
@@ -2081,6 +2077,15 @@ async function doSubmitChecks(items) {
     if (r.success) {
       var msg = '✅ 활성화 ' + r.ok + '건';
       if (r.bad > 0) msg += ' · ⚠️ 불일치 ' + r.bad + '건(재확인)';
+      // 구글 시트에 반영
+      items.forEach(function(it) {
+        syncToSheet(kind === 'chain' ? 'updateChainLot' : 'updateWireLot', {
+          no: it.no,
+          status: '사용가능',
+          checkWeight: it.checkWeight,
+          emp: emp
+        });
+      });
       toast(msg, 3500, r.bad > 0 ? 'err' : 'ok');
       loadCheck(kind);
     } else toast('❌ ' + (r.error || '실패'), 2500, 'err');
