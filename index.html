@@ -1384,48 +1384,39 @@ function submitProduce() {
   var isChain = S.lotKind === 'chain';
 
   if (isChain) {
-    // 체인 생산: 중량 또는 길이 중 하나라도 입력된 항목 수집
     var allNos = Object.keys(S.prodVals || {}).concat(Object.keys(S.prodLens || {}));
     var uniqueNos = allNos.filter(function(v, i, a) { return a.indexOf(v) === i; });
     var items = [];
     uniqueNos.forEach(function(no) {
       var w = (S.prodVals && S.prodVals[no]) || 0;
       var l = (S.prodLens && S.prodLens[no]) || 0;
-      if (w > 0 || l > 0) {
-        items.push({no: no, weight: w, chainLen: l});
-      }
+      if (w > 0 || l > 0) items.push({no: no, weight: w, chainLen: l});
     });
-
     if (!items.length) { toast('⚠️ 생산중량 또는 길이를 입력하세요', 2000, 'err'); return; }
 
-    // 중량 또는 길이 둘 중 하나라도 미입력 항목 체크
     var missingWeight = items.filter(function(it) { return !it.weight || it.weight <= 0; });
     var missingLen    = items.filter(function(it) { return !it.chainLen || it.chainLen <= 0; });
-    var missingItems  = missingWeight.length + missingLen.length;
 
-    if (missingItems > 0) {
-    if (missingItems > 0) {
+    if (missingWeight.length > 0 || missingLen.length > 0) {
       var msg = '⚠️ 입력되지 않은 항목이 있습니다\n\n';
       if (missingWeight.length) msg += '· 생산중량 미입력 ' + missingWeight.length + '개\n';
       if (missingLen.length)    msg += '· 생산길이 미입력 ' + missingLen.length + '개\n';
-      msg += '\n미입력 항목은 0으로 저장됩니다.\n그래도 저장하시겠습니까?';
+      msg += '\n미입력 항목은 0으로 저장됩니다. 그래도 저장하시겠습니까?';
       showConfirmPopup(msg,
         function() { requirePin(function() { doSubmitProduce(items); }); },
         function() { return; }
       );
       return;
     }
-
     requirePin(function() { doSubmitProduce(items); });
 
   } else {
-    // 용접: 중량만
-    var items = [];
+    var weldItems = [];
     Object.keys(S.prodVals || {}).forEach(function(no) {
-      if (S.prodVals[no] > 0) items.push({no: no, weight: S.prodVals[no], chainLen: 0});
+      if (S.prodVals[no] > 0) weldItems.push({no: no, weight: S.prodVals[no], chainLen: 0});
     });
-    if (!items.length) { toast('⚠️ 용접 후중량을 입력하세요', 2000, 'err'); return; }
-    requirePin(function() { doSubmitProduce(items); });
+    if (!weldItems.length) { toast('⚠️ 용접 후중량을 입력하세요', 2000, 'err'); return; }
+    requirePin(function() { doSubmitProduce(weldItems); });
   }
 }
 
