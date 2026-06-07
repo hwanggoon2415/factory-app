@@ -487,24 +487,10 @@ async function fbUpdateRow(rowNum, data) {
   await updateDoc(ref, {...data, updatedTs: serverTimestamp()});
 }
 
-// 실시간 rows 리스너
-var _rowsUnsubscribe = null;
-
-function startRowsListener(onUpdate) {
-  if (_rowsUnsubscribe) _rowsUnsubscribe(); // 기존 리스너 해제
-  _rowsUnsubscribe = onSnapshot(collection(db, 'rows'), function(snap) {
-    var rows = snap.docs.map(function(d) {
-      return Object.assign({rowNum: d.id.replace('row_',''), docId: d.id}, d.data());
-    });
-    rows.sort(function(a,b) { return (b.date||'').localeCompare(a.date||''); });
-    if (onUpdate) onUpdate(rows);
-  });
-}
-
 window._fbReady = true;
 window._fbFirestore = { getDocs, collection, doc, setDoc, updateDoc, addDoc, deleteDoc };
 window._fbApi.fbUpdateRow = fbUpdateRow;
-window._fbApi.startRowsListener = startRowsListener;
+
 document.dispatchEvent(new Event('fbReady'));
 </script>
 
@@ -795,21 +781,7 @@ async function openList(mode) {
   }
   show('listSc');
 
-  // 실시간 리스너 - 구글 시트 새 행 추가시 자동 반영
-  if (window._fbApi && window._fbApi.startRowsListener) {
-    window._fbApi.startRowsListener(function(rows) {
-      var listSc = document.getElementById('listSc');
-      if (!listSc || !listSc.classList.contains('active')) return;
-      // 현재 보고있는 모드와 같을 때만 업데이트
-      var prevLen = S.rows.length;
-      S.rows = rows;
-      if (rows.length !== prevLen) {
-        toast('🔄 새 작업계획이 추가됐어요!', 2000, 'ok');
-      }
-      // openList 재호출 없이 목록만 다시 그리기
-      renderListBody(S.inpMode);
-    });
-  }
+
 }
 
 function buildCard(r, mode) {
