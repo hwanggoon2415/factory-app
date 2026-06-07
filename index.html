@@ -909,7 +909,19 @@ async function doSaveWireGroup(rows) {
     var r = await apiPost({action:'saveWires', empName:emp, items:items});
     hideLoad();
     if (r.success) {
-      applyWireLocal(items);                 // 서버 재조회 없이 즉시 반영(빠름)
+      applyWireLocal(items);
+      // 차이값 구글 시트 반영
+      if (badWireOut || scrapOut) {
+        items.forEach(function(it) {
+          syncToSheet('updateDiff', {
+            rowNum: it.rowNum,
+            mode: 'wire',
+            badWire: badWireOut,
+            scrapOut: scrapOut,
+            emp: emp
+          });
+        });
+      }
       toast('✅ 저장 완료 · 기계실로 전달됨', 1600, 'ok');
       afterWireSave(meltNo);
     } else {
