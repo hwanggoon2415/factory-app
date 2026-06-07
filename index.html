@@ -481,8 +481,15 @@ window._fbApi = {
   fbGetInventory, fbCancelLot, fbAddRow
 };
 window._db = db;
+// rows 단일 필드 업데이트
+async function fbUpdateRow(rowNum, data) {
+  const ref = doc(db, 'rows', 'row_' + rowNum);
+  await updateDoc(ref, {...data, updatedTs: serverTimestamp()});
+}
+
 window._fbReady = true;
 window._fbFirestore = { getDocs, collection, doc, setDoc, updateDoc, addDoc, deleteDoc };
+window._fbApi.fbUpdateRow = fbUpdateRow;
 document.dispatchEvent(new Event('fbReady'));
 </script>
 
@@ -906,6 +913,7 @@ function openInp(mode, row) {
   var info = '';
 
   if (mode === 'wire') {
+    S.fields.badWire = 0; S.fields.scrapOut = 0;
     info =
       '<div class="inp-card"><div class="inp-label">용해번호</div><div class="inp-val" style="color:#1565c0">' + row.meltNo + '</div></div>' +
       '<div class="inp-row">' +
@@ -925,8 +933,22 @@ function openInp(mode, row) {
           '<div>불량선재 <b>' + fmt(row.badWire) + 'g</b></div>' +
           '<div>예상중량 <b style="color:#1565c0">' + fmt(row.wirePlan) + 'g</b></div>' +
         '</div>' +
+      '</div>' +
+      '<div class="inp-card" style="background:#fff3e0">' +
+        '<div class="inp-label" style="color:#e65100">⚠️ 차이값 등록 (선택)</div>' +
+        '<div class="inp-row" style="margin-top:10px">' +
+          '<div class="inp-card" id="kp_diff_badWire" style="cursor:pointer">' +
+            '<div class="inp-label">불량선재</div>' +
+            '<div class="inp-field" style="border-color:#e65100"><span class="fv" id="v_badWire" style="color:#e65100">0</span><span class="fu">g</span></div>' +
+          '</div>' +
+          '<div class="inp-card" id="kp_diff_scrapOut" style="cursor:pointer">' +
+            '<div class="inp-label">재말발생</div>' +
+            '<div class="inp-field" style="border-color:#e65100"><span class="fv" id="v_scrapOut" style="color:#e65100">0</span><span class="fu">g</span></div>' +
+          '</div>' +
+        '</div>' +
       '</div>';
   } else if (mode === 'chain') {
+    S.fields.chainBad = 0;
     info =
       '<div class="inp-card"><div class="inp-label">용해번호</div><div class="inp-val" style="color:#1565c0">' + row.meltNo + '</div></div>' +
       '<div class="inp-row">' +
@@ -937,15 +959,34 @@ function openInp(mode, row) {
         '<div class="inp-card"><div class="inp-label">체인 종류</div><div class="inp-val">' + (row.chainType||'-') + '</div></div>' +
         '<div class="inp-card"><div class="inp-label">계획중량</div><div class="inp-val" style="color:#888">' + fmt(row.chainPlan) + 'g</div></div>' +
       '</div>' +
-      '<div class="inp-card" style="background:#fff8e1"><div class="inp-label">💡 해리 = 선재후중량 − 체인생산중량 (자동계산)</div></div>';
+      '<div class="inp-card" style="background:#fff8e1"><div class="inp-label">💡 해리 = 선재후중량 − 체인생산중량 (자동계산)</div></div>' +
+      '<div class="inp-card" style="background:#fff3e0">' +
+        '<div class="inp-label" style="color:#e65100">⚠️ 차이값 등록 (선택)</div>' +
+        '<div style="margin-top:10px">' +
+          '<div class="inp-card" id="kp_diff_chainBad" style="cursor:pointer">' +
+            '<div class="inp-label">불량체인</div>' +
+            '<div class="inp-field" style="border-color:#e65100"><span class="fv" id="v_chainBad" style="color:#e65100">0</span><span class="fu">g</span></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
   } else {
+    S.fields.weldBad = 0;
     info =
       '<div class="inp-card"><div class="inp-label">용해번호</div><div class="inp-val" style="color:#1565c0">' + row.meltNo + '</div></div>' +
       '<div class="inp-row">' +
         '<div class="inp-card"><div class="inp-label">체인 종류</div><div class="inp-val">' + (row.chainType||'-') + '</div></div>' +
         '<div class="inp-card"><div class="inp-label">체인 생산중량</div><div class="inp-val" style="color:#888">' + fmt(row.chainProd) + 'g</div></div>' +
       '</div>' +
-      '<div class="inp-card" style="background:#fff8e1"><div class="inp-label">💡 용접약이 붙어 중량이 늘어납니다</div></div>';
+      '<div class="inp-card" style="background:#fff8e1"><div class="inp-label">💡 용접약이 붙어 중량이 늘어납니다</div></div>' +
+      '<div class="inp-card" style="background:#fff3e0">' +
+        '<div class="inp-label" style="color:#e65100">⚠️ 차이값 등록 (선택)</div>' +
+        '<div style="margin-top:10px">' +
+          '<div class="inp-card" id="kp_diff_weldBad" style="cursor:pointer">' +
+            '<div class="inp-label">불량</div>' +
+            '<div class="inp-field" style="border-color:#e65100"><span class="fv" id="v_weldBad" style="color:#e65100">0</span><span class="fu">g</span></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
   }
 
   info += '<div class="inp-card" onclick="openKP(\'weight\',\'' + lbl + '\')">' +
@@ -954,6 +995,25 @@ function openInp(mode, row) {
     '</div>';
 
   document.getElementById('inpBody').innerHTML = info;
+
+  // 차이값 카드 클릭 이벤트 바인딩
+  setTimeout(function() {
+    var diffMap = {
+      'kp_diff_badWire':  ['badWire',  '불량선재 (g)'],
+      'kp_diff_scrapOut': ['scrapOut', '재말발생 (g)'],
+      'kp_diff_chainBad': ['chainBad', '불량체인 (g)'],
+      'kp_diff_weldBad':  ['weldBad',  '불량 (g)']
+    };
+    Object.keys(diffMap).forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) {
+        var field = diffMap[id][0];
+        var label = diffMap[id][1];
+        el.onclick = function() { openKP(field, label); };
+      }
+    });
+  }, 100);
+
   document.getElementById('saveBtn').onclick = function() {
     if (!S.fields.weight) { toast('⚠️ 중량을 입력해주세요', 2000, 'err'); return; }
     requirePin(function() { doSave(mode); });
@@ -966,15 +1026,48 @@ async function doSave(mode) {
   var emp = S.user ? S.user.name : '미확인';
   var row = S.selRow;
   var payload = {empName:emp, rowNum:row.rowNum, weight:S.fields.weight};
-  var msg = '✅ 저장 완료';
 
+  // 차이값 추가
+  if (mode === 'wire') {
+    payload.badWire  = S.fields.badWire  || 0;
+    payload.scrapOut = S.fields.scrapOut || 0;
+  } else if (mode === 'chain') {
+    payload.chainBad = S.fields.chainBad || 0;
+    // 해리 자동계산
+    payload.haeri = (row.wireReal || 0) - (S.fields.weight || 0);
+  } else if (mode === 'weld') {
+    payload.weldBad = S.fields.weldBad || 0;
+    // 용접 증가량 자동계산
+    payload.weldInc = (S.fields.weight || 0) - (row.chainProd || 0);
+  }
+
+  var msg = '✅ 저장 완료';
   if (DEMO) { await sleep(600); hideLoad(); toast(msg + ' (데모)', 3000, 'ok'); setTimeout(goMenu, 2200); return; }
   try {
     var action = mode === 'wire' ? 'saveWire' : mode === 'chain' ? 'saveChain' : 'saveWeld';
     payload.action = action;
     var r = await apiPost(payload);
     hideLoad();
-    if (r.success) { toast(msg, 3000, 'ok'); setTimeout(goMenu, 2200); }
+    if (r.success) {
+      // 차이값 구글 시트에 반영
+      if (mode === 'wire' && (payload.badWire || payload.scrapOut)) {
+        syncToSheet('updateDiff', {rowNum:row.rowNum, mode:'wire', badWire:payload.badWire, scrapOut:payload.scrapOut, emp:emp});
+      } else if (mode === 'chain' && payload.haeri) {
+        syncToSheet('updateDiff', {rowNum:row.rowNum, mode:'chain', haeri:payload.haeri, chainBad:payload.chainBad||0, emp:emp});
+      } else if (mode === 'weld' && payload.weldInc) {
+        syncToSheet('updateDiff', {rowNum:row.rowNum, mode:'weld', weldInc:payload.weldInc, weldBad:payload.weldBad||0, emp:emp});
+      }
+      // Firebase rows 업데이트
+      var diffData = {};
+      if (mode === 'wire')  { diffData.badWireOut = payload.badWire||0; diffData.scrapOut = payload.scrapOut||0; }
+      if (mode === 'chain') { diffData.haeri = payload.haeri||0; diffData.chainBad = payload.chainBad||0; }
+      if (mode === 'weld')  { diffData.weldInc = payload.weldInc||0; diffData.weldBad = payload.weldBad||0; }
+      if (Object.keys(diffData).length) {
+        try { await window._fbApi.fbUpdateRow(row.rowNum, diffData); } catch(e) {}
+      }
+      toast(msg, 3000, 'ok');
+      setTimeout(goMenu, 2200);
+    }
     else toast('❌ 저장 실패: ' + (r.error||''), 3000, 'err');
   } catch(e) { hideLoad(); toast('❌ 연결 오류', 3000, 'err'); }
 }
