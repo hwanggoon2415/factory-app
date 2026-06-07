@@ -781,6 +781,24 @@ async function openList(mode) {
   }
   show('listSc');
 
+  // 30초마다 자동 새로고침 (구글 시트 새 행 자동 반영)
+  if (S._listPollTimer) clearInterval(S._listPollTimer);
+  S._listPollTimer = setInterval(async function() {
+    var listSc = document.getElementById('listSc');
+    if (!listSc || !listSc.classList.contains('active')) {
+      clearInterval(S._listPollTimer); return;
+    }
+    try {
+      var r = await apiGet('getRows', {dept: S.dept});
+      var newRows = r.data || [];
+      if (newRows.length !== S.rows.length) {
+        S.rows = newRows;
+        renderListBody(S.inpMode);
+        toast('🔄 새 작업계획이 추가됐어요!', 2000, 'ok');
+      }
+    } catch(e) {}
+  }, 30000);
+
 
 }
 
