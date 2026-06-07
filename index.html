@@ -825,7 +825,39 @@ function openWireGroupInp(meltNo, rows) {
   });
   html += '</div>';
 
+  // 차이값 등록 칸 추가
+  S.fields.badWireOut = 0; S.fields.scrapOut = 0;
+  html +=
+    '<div class="inp-card" style="background:#fff3e0">' +
+      '<div class="inp-label" style="color:#e65100;font-size:18px;font-weight:700">⚠️ 차이값 등록 (선택)</div>' +
+      '<div class="inp-row" style="margin-top:12px">' +
+        '<div class="inp-card" id="kp_diff_badWireOut" style="cursor:pointer">' +
+          '<div class="inp-label">불량선재</div>' +
+          '<div class="inp-field" style="border-color:#e65100;height:64px;display:flex;align-items:center;justify-content:flex-end;padding:0 14px">' +
+            '<span class="fv" id="v_badWireOut" style="color:#e65100;font-size:26px;font-weight:800">0</span>' +
+            '<span class="fu" style="font-size:16px;margin-left:4px">g</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="inp-card" id="kp_diff_scrapOut" style="cursor:pointer">' +
+          '<div class="inp-label">재말발생</div>' +
+          '<div class="inp-field" style="border-color:#e65100;height:64px;display:flex;align-items:center;justify-content:flex-end;padding:0 14px">' +
+            '<span class="fv" id="v_scrapOut" style="color:#e65100;font-size:26px;font-weight:800">0</span>' +
+            '<span class="fu" style="font-size:16px;margin-left:4px">g</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
   document.getElementById('inpBody').innerHTML = html;
+
+  // 차이값 클릭 이벤트
+  setTimeout(function() {
+    var el1 = document.getElementById('kp_diff_badWireOut');
+    var el2 = document.getElementById('kp_diff_scrapOut');
+    if (el1) el1.onclick = function() { openKP('badWireOut', '불량선재 (g)'); };
+    if (el2) el2.onclick = function() { openKP('scrapOut', '재말발생 (g)'); };
+  }, 100);
+
   document.getElementById('saveBtn').onclick = function() {
     var hasAny = Object.values(S.fields.wireWeights).some(function(v) { return v > 0; });
     if (!hasAny) { toast('⚠️ 하나 이상 실중량을 입력해주세요', 2000, 'err'); return; }
@@ -861,6 +893,10 @@ async function doSaveWireGroup(rows) {
     };
   }).filter(function(it) { return it.weight > 0; });
   if (!items.length) { toast('⚠️ 입력된 실중량이 없습니다', 2000, 'err'); return; }
+
+  // 차이값 포함
+  var badWireOut = S.fields.badWireOut || 0;
+  var scrapOut   = S.fields.scrapOut   || 0;
 
   showLoad();
   if (DEMO) {
