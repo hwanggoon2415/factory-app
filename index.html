@@ -1404,16 +1404,11 @@ function submitProduce() {
     var missingItems  = missingWeight.length + missingLen.length;
 
     if (missingItems > 0) {
-      var msg = '⚠️ 입력되지 않은 항목이 있습니다
-
-';
-      if (missingWeight.length) msg += '· 생산중량 미입력 ' + missingWeight.length + '개
-';
-      if (missingLen.length)    msg += '· 생산길이 미입력 ' + missingLen.length + '개
-';
-      msg += '
-미입력 항목은 0으로 저장됩니다.
-그래도 저장하시겠습니까?';
+    if (missingItems > 0) {
+      var msg = '⚠️ 입력되지 않은 항목이 있습니다\n\n';
+      if (missingWeight.length) msg += '· 생산중량 미입력 ' + missingWeight.length + '개\n';
+      if (missingLen.length)    msg += '· 생산길이 미입력 ' + missingLen.length + '개\n';
+      msg += '\n미입력 항목은 0으로 저장됩니다.\n그래도 저장하시겠습니까?';
       showConfirmPopup(msg,
         function() { requirePin(function() { doSubmitProduce(items); }); },
         function() { return; }
