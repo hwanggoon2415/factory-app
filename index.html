@@ -659,6 +659,50 @@ function openMenu() {
   show('menuSc');
 }
 
+function renderListBody(mode) {
+  var filtered = S.rows.filter(function(r) {
+    if (mode === 'wire')  return !r.wireReal;
+    if (mode === 'chain') return r.wireReal && !r.chainProd;
+    if (mode === 'weld')  return r.chainProd && !r.weldAfter;
+    return true;
+  });
+  var body = document.getElementById('listBody');
+  if (!body) return;
+  if (!filtered.length) {
+    body.innerHTML = '<div class="empty"><div class="eico">📭</div><div class="etxt">현재 입력할 항목이 없습니다</div></div>';
+    return;
+  }
+  // 목록 다시 그리기 (openList의 렌더링 부분만 실행)
+  if (mode === 'wire') {
+    var groups = {}, groupOrder = [];
+    filtered.forEach(function(row) {
+      if (!groups[row.meltNo]) { groups[row.meltNo] = []; groupOrder.push(row.meltNo); }
+      groups[row.meltNo].push(row);
+    });
+    body.innerHTML = '';
+    groupOrder.forEach(function(meltNo) {
+      var remainRows = groups[meltNo];
+      var allRows = S.rows.filter(function(r) { return r.meltNo === meltNo; });
+      var card = document.createElement('div');
+      card.className = 'row-card';
+      card.style.borderLeftColor = S.deptColor;
+      card.innerHTML = buildCard(allRows[0], mode);
+      card.onclick = function() { S.selRow = allRows[0]; openWireGroupInp(meltNo, remainRows); };
+      body.appendChild(card);
+    });
+  } else {
+    body.innerHTML = '';
+    filtered.forEach(function(row) {
+      var card = document.createElement('div');
+      card.className = 'row-card';
+      card.style.borderLeftColor = S.deptColor;
+      card.innerHTML = buildCard(row, mode);
+      card.onclick = function() { S.selRow = row; openInp(mode, row); };
+      body.appendChild(card);
+    });
+  }
+}
+
 async function openList(mode) {
   S.inpMode = mode;
   var titles = {wire:'용해 등록 목록', chain:'체인 생산 목록', weld:'용접 목록', view:'오늘 생산현황'};
@@ -756,9 +800,14 @@ async function openList(mode) {
     window._fbApi.startRowsListener(function(rows) {
       var listSc = document.getElementById('listSc');
       if (!listSc || !listSc.classList.contains('active')) return;
+      // 현재 보고있는 모드와 같을 때만 업데이트
+      var prevLen = S.rows.length;
       S.rows = rows;
-      // 현재 모드에 맞게 다시 렌더링
-      openList(S.inpMode);
+      if (rows.length !== prevLen) {
+        toast('🔄 새 작업계획이 추가됐어요!', 2000, 'ok');
+      }
+      // openList 재호출 없이 목록만 다시 그리기
+      renderListBody(S.inpMode);
     });
   }
 }
