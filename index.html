@@ -1583,25 +1583,30 @@ function renderProduceList(box, list) {
     '</div>';
   }
 
-  box.innerHTML = html;
-}
+
   // 차이값 클릭 이벤트
   setTimeout(function() {
     var el1 = document.getElementById('kp_diff_chainBad2');
     var el2 = document.getElementById('kp_diff_weldBad2');
     if (el1) el1.onclick = function() {
+      if (!S.prodDiff) S.prodDiff = {};
       S.kpField = 'prodDiff_chainBad'; S.kpVal = String(S.prodDiff.chainBad||0);
       document.getElementById('kpLbl').textContent = '불량체인 (g)';
       document.getElementById('kpDisp').textContent = fmtKp(S.kpVal);
-      document.getElementById('kpBg').classList.add('on'); document.getElementById('kpSheet').classList.add('on');
+      document.getElementById('kpBg').classList.add('on');
+      document.getElementById('kpSheet').classList.add('on');
     };
     if (el2) el2.onclick = function() {
+      if (!S.prodDiff) S.prodDiff = {};
       S.kpField = 'prodDiff_weldBad'; S.kpVal = String(S.prodDiff.weldBad||0);
       document.getElementById('kpLbl').textContent = '불량 (g)';
       document.getElementById('kpDisp').textContent = fmtKp(S.kpVal);
-      document.getElementById('kpBg').classList.add('on'); document.getElementById('kpSheet').classList.add('on');
+      document.getElementById('kpBg').classList.add('on');
+      document.getElementById('kpSheet').classList.add('on');
     };
   }, 100);
+}
+
 function renderLotAvail() {
   var sb = document.getElementById('lotSearch');
   var q = (sb && sb.value || '').trim();
