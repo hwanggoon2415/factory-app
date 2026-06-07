@@ -1451,8 +1451,10 @@ function renderProduceList(box, list) {
       if (l.chainWt) sp.push('중량 ' + fmt(l.chainWt) + 'g');
       spec = sp.length ? sp.join(' · ') + ' · ' : '';
     }
-    var lenTxt = (isChain && l.chainLen !== '' && l.chainLen != null) ? '<span style="color:#1565c0;font-weight:700;margin-left:12px;font-size:20px">' + l.chainLen + 'm</span>' : '';
-    var mainTxt = isChain ? ((l.wtype||'-') + '  →  ' + (l.chainType||'-') + lenTxt) : (l.chainType||'-');
+    var lenTxt = (l.chainLen !== '' && l.chainLen != null && l.chainLen !== 0) ? '<span style="color:#1565c0;font-weight:700;margin-left:12px;font-size:20px">' + l.chainLen + 'm</span>' : '';
+    var mainTxt = isChain
+      ? ((l.wtype||'-') + '  →  ' + (l.chainType||'-') + lenTxt)
+      : ((l.chainType||'-') + lenTxt);
     var subTxt = isChain ? ('선재 ' + fmt(l.left) + 'g · ' + l.no) : ('번호 ' + l.no + ' · 체인 ' + fmt(l.left) + 'g');
     var curLen = (S.prodLens && S.prodLens[l.no]) || 0;
     var right = active
