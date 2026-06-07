@@ -1199,6 +1199,15 @@ function closeKP() {
     hideKpSheet();
     return;
   }
+  if (S.kpField.indexOf('prodDiff_') === 0) {      // 체인/용접 차이값 입력
+    var dfield = S.kpField.slice(9);
+    var dv = parseFloat(S.kpVal) || 0;
+    if (!S.prodDiff) S.prodDiff = {};
+    S.prodDiff[dfield] = dv;
+    var del = document.getElementById('v_' + (dfield === 'chainBad' ? 'chainBad2' : 'weldBad2'));
+    if (del) del.textContent = dv;
+    hideKpSheet(); return;
+  }
   if (S.kpField.indexOf('prodLen_') === 0) {        // 체인 길이 입력
     var no = S.kpField.slice(8);
     var v = parseFloat(S.kpVal) || 0;
@@ -1460,8 +1469,56 @@ function renderProduceList(box, list) {
     '</div>';
   });
   html += '</div>';
+
+  // 차이값 등록 칸
+  if (!S.prodDiff) S.prodDiff = {};
+  if (isChain) {
+    html += '<div class="inp-card" style="background:#fff3e0">' +
+      '<div class="inp-label" style="color:#e65100;font-size:18px;font-weight:700">⚠️ 차이값 등록 (선택)</div>' +
+      '<div style="margin-top:12px">' +
+        '<div class="inp-card" id="kp_diff_chainBad2" style="cursor:pointer">' +
+          '<div class="inp-label">불량체인</div>' +
+          '<div class="inp-field" style="border-color:#e65100;height:64px;display:flex;align-items:center;justify-content:flex-end;padding:0 14px">' +
+            '<span class="fv" id="v_chainBad2" style="color:#e65100;font-size:26px;font-weight:800">0</span>' +
+            '<span class="fu" style="font-size:16px;margin-left:4px">g</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  } else {
+    html += '<div class="inp-card" style="background:#fff3e0">' +
+      '<div class="inp-label" style="color:#e65100;font-size:18px;font-weight:700">⚠️ 차이값 등록 (선택)</div>' +
+      '<div style="margin-top:12px">' +
+        '<div class="inp-card" id="kp_diff_weldBad2" style="cursor:pointer">' +
+          '<div class="inp-label">불량</div>' +
+          '<div class="inp-field" style="border-color:#e65100;height:64px;display:flex;align-items:center;justify-content:flex-end;padding:0 14px">' +
+            '<span class="fv" id="v_weldBad2" style="color:#e65100;font-size:26px;font-weight:800">0</span>' +
+            '<span class="fu" style="font-size:16px;margin-left:4px">g</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
   box.innerHTML = html;
 }
+  // 차이값 클릭 이벤트
+  setTimeout(function() {
+    var el1 = document.getElementById('kp_diff_chainBad2');
+    var el2 = document.getElementById('kp_diff_weldBad2');
+    if (el1) el1.onclick = function() {
+      S.kpField = 'prodDiff_chainBad'; S.kpVal = String(S.prodDiff.chainBad||0);
+      document.getElementById('kpLbl').textContent = '불량체인 (g)';
+      document.getElementById('kpDisp').textContent = fmtKp(S.kpVal);
+      document.getElementById('kpBg').classList.add('on'); document.getElementById('kpSheet').classList.add('on');
+    };
+    if (el2) el2.onclick = function() {
+      S.kpField = 'prodDiff_weldBad'; S.kpVal = String(S.prodDiff.weldBad||0);
+      document.getElementById('kpLbl').textContent = '불량 (g)';
+      document.getElementById('kpDisp').textContent = fmtKp(S.kpVal);
+      document.getElementById('kpBg').classList.add('on'); document.getElementById('kpSheet').classList.add('on');
+    };
+  }, 100);
 function renderLotAvail() {
   var sb = document.getElementById('lotSearch');
   var q = (sb && sb.value || '').trim();
@@ -1537,7 +1594,12 @@ function submitProduce() {
       );
       return;
     }
-    requirePin(function() { doSubmitProduce(items); });
+    requirePin(function() {
+      if (S.prodDiff && S.prodDiff.chainBad) {
+        syncToSheet('updateDiff', {rowNum: items[0].no, mode:'chain', chainBad: S.prodDiff.chainBad});
+      }
+      doSubmitProduce(items);
+    });
 
   } else {
     var weldItems = [];
@@ -1545,7 +1607,12 @@ function submitProduce() {
       if (S.prodVals[no] > 0) weldItems.push({no: no, weight: S.prodVals[no], chainLen: 0});
     });
     if (!weldItems.length) { toast('⚠️ 용접 후중량을 입력하세요', 2000, 'err'); return; }
-    requirePin(function() { doSubmitProduce(weldItems); });
+    requirePin(function() {
+      if (S.prodDiff && S.prodDiff.weldBad) {
+        syncToSheet('updateDiff', {rowNum: weldItems[0].no, mode:'weld', weldBad: S.prodDiff.weldBad});
+      }
+      doSubmitProduce(weldItems);
+    });
   }
 }
 
