@@ -1009,7 +1009,9 @@ async function openWireGroupInp(meltNo, rows) {
           '<div style="font-size:22px;font-weight:800;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (row.wireType||'-') + '</div>' +
           '<div style="font-size:16px;color:#666;margin-top:4px;font-weight:600">예상 ' + fmt(row.wirePlan) + 'g' +
             '<span id="urgSent_' + row.rowNum + '">' +
-            (row.urgentSent ? ' · <span style="color:#e65100">전달 ' + fmt(row.urgentSent) + 'g · 잔량 ' + fmt(row.wirePlan - row.urgentSent) + 'g</span>' : '') +
+            (row.urgentSent > 0
+              ? ' · <span style="color:#e65100">전달 ' + fmt(row.urgentSent) + 'g · 잔량 ' + fmt(Math.max(0, (row.wireReal || row.wirePlan || 0) - row.urgentSent)) + 'g</span>'
+              : '') +
             '</span>' +
           '</div>' +
         '</div>' +
@@ -1086,10 +1088,17 @@ function quickUrgentTransfer(rowNum) {
       '</div>' +
       '<button id="qurgClose" style="background:none;border:none;font-size:28px;color:#bbb;cursor:pointer">✕</button>' +
     '</div>' +
-    (currentWeight > 0
-      ? '<div style="background:#e8f5e9;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:14px;color:#2e7d32">현재 입력값 <b>' + fmt(currentWeight) + 'g</b> 으로 긴급전달합니다</div>'
-      : '<div style="background:#fff8e1;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:14px;color:#e65100">⚠️ 중량을 먼저 입력하거나 아래에 직접 입력하세요</div>'
-    ) +
+    (function(){
+      var base = currentWeight || row.wirePlan || 0;
+      var sent = row.urgentSent || 0;
+      var left = Math.max(0, base - sent);
+      var baseStr = currentWeight > 0 ? '입력값 ' + fmt(currentWeight) + 'g' : '예상 ' + fmt(row.wirePlan) + 'g';
+      return '<div style="background:#fff8e1;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:14px;color:#e65100">' +
+        '기준 ' + baseStr +
+        (sent > 0 ? ' · 기전달 ' + fmt(sent) + 'g' : '') +
+        ' · <b>잔량 ' + fmt(left) + 'g</b>' +
+        '</div>';
+    })() +
     '<div style="font-size:15px;color:#666;font-weight:500;margin-bottom:8px">보낼 중량 (g)</div>' +
     '<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">' +
       '<input id="qurgWeight" type="number" value="' + (currentWeight || '') + '" placeholder="0" ' +
@@ -1320,12 +1329,13 @@ async function openUrgentList() {
         '</div>';
     }
 
-    // 잔량 계산
-    var totalReal = row.wireReal || 0;
-    var remaining = totalSent > 0 ? (totalReal > 0 ? totalReal - totalSent : '미확인') : (totalReal > 0 ? totalReal : '미입력');
-    var remainTxt = typeof remaining === 'number'
-      ? '<span style="color:#e65100;font-weight:500">' + fmt(remaining) + 'g 잔량</span>'
-      : '<span style="color:#aaa">' + remaining + '</span>';
+    // 잔량 계산 (후중량 있으면 후중량 기준, 없으면 예상중량 기준)
+    var baseWeight = row.wireReal || row.wirePlan || 0;
+    var baseLabel = row.wireReal ? '후중량' : '예상';
+    var remaining = baseWeight > 0 ? baseWeight - totalSent : 0;
+    var remainTxt = baseWeight > 0
+      ? '<span style="color:#e65100;font-weight:500">' + baseLabel + ' ' + fmt(baseWeight) + 'g · 전달 ' + fmt(totalSent) + 'g · <b>잔량 ' + fmt(Math.max(0,remaining)) + 'g</b></span>'
+      : '<span style="color:#aaa">예상중량 미입력</span>';
 
     var card = document.createElement('div');
     card.className = 'row-card';
