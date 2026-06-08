@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>생산공정 관리 v64</title>
+<title>생산공정 관리 v65</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;height:100dvh;overflow:hidden;touch-action:manipulation;user-select:none;}
@@ -152,7 +152,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;heigh
 </div>
 
 <div class="screen active" id="home">
-  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v64</div></div>
+  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v65</div></div>
   <div class="datebar" id="homeDateBar"></div>
   <div class="scrollbody">
     <div class="home-group">
@@ -258,15 +258,19 @@ async function fbVerifyDept(code, pw) {
   return stored === String(pw) ? {success:true} : {success:false};
 }
 
-// 작업자 PIN 확인
+// 작업자 PIN 확인 (부서 일치 여부도 검증)
 async function fbVerifyEmp(pin, dept) {
-  // 전체 직원 목록 가져와서 앱에서 비교 (인덱스 불필요)
   const snap = await getDocs(collection(db,'employees'));
   const pinStr = String(pin);
   for (const d of snap.docs) {
     const emp = d.data();
     if (String(emp.pin) === pinStr) {
-      return {success:true, name:emp.name};
+      // 부서가 일치하거나 직원에 부서 정보가 없으면 통과
+      if (!dept || !emp.dept || emp.dept === dept) {
+        return {success:true, name:emp.name};
+      } else {
+        return {success:false, error:'이 부서의 작업자가 아닙니다'};
+      }
     }
   }
   return {success:false};
@@ -1432,7 +1436,8 @@ async function doPinVerify() {
     S.personalPin = '';
     if (S.personalCB) S.personalCB();
   } else {
-    toast('❌ 비밀번호 오류 (데모: 1111/2222)', 2500, 'err');
+    var errMsg = (result && result.error) ? '❌ ' + result.error : '❌ 비밀번호가 틀렸습니다';
+    toast(errMsg, 2500, 'err');
     S.personalPin = ''; renderDots('pinDots', 0);
   }
 }
