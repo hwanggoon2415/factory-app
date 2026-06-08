@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>생산공정 관리 v62</title>
+<title>생산공정 관리 v63</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;height:100dvh;overflow:hidden;touch-action:manipulation;user-select:none;}
@@ -152,7 +152,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;heigh
 </div>
 
 <div class="screen active" id="home">
-  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v62</div></div>
+  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v63</div></div>
   <div class="datebar" id="homeDateBar"></div>
   <div class="scrollbody">
     <div class="home-group">
@@ -307,23 +307,21 @@ async function fbSaveWires(items, empName) {
       ts: serverTimestamp()
     }, {merge:true});
   }
-  // 백그라운드로 구글 시트에도 반영
-  for (const it of items) {
-    const rowSnap2 = await getDoc(doc(db,'rows','row_' + it.rowNum));
-    const row2 = rowSnap2.data() || {};
+  // 백그라운드로 구글 시트에도 반영 (getDoc 제거 - items에 이미 row 데이터 포함)
+  items.forEach(it => {
     syncToSheet('updateWireReal', {
-      rowNum: it.rowNum, meltNo: row2.meltNo||'', wireType: row2.wireType||'',
+      rowNum: it.rowNum, meltNo: it.meltNo||'', wireType: it.wireType||'',
       wireReal: it.weight, emp: empName
     });
     const lotNo2 = it.rowNum + '-W';
     syncToSheet('updateWireLot', {
-      no: lotNo2, meltNo: row2.meltNo||'', wtype: row2.wireType||'',
-      mat: row2.material||'', cont: row2.content||'',
-      left: it.weight, chainType: row2.chainType||'',
-      chainLen: row2.chainLen||'', chainWt: row2.chainWt||0,
+      no: lotNo2, meltNo: it.meltNo||'', wtype: it.wireType||'',
+      mat: it.material||'', cont: it.content||'',
+      left: it.weight, chainType: it.chainType||'',
+      chainLen: it.chainLen||'', chainWt: it.chainWt||0,
       status: '검수대기', rowNum: it.rowNum, emp: empName
     });
-  }
+  });
   return {success:true};
 }
 
@@ -404,20 +402,14 @@ async function fbSaveChainsBatch(items, empName) {
     if (wire.rowNum) {
       await updateDoc(doc(db,'rows','row_' + wire.rowNum), {chainProd: it.weight, haeri, chainEmp: empName, chainTs: serverTimestamp()});
     }
-    // 백그라운드로 구글 시트에도 반영
+    // 구글 시트 반영 (체인로트 + 생산시트 W~Y열 한번에)
     syncToSheet('updateChainLot', {
       no: chainNo, meltNo: wire.meltNo||'',
       chainType: wire.chainType||'', left: it.weight,
       haeri, chainLen: it.chainLen||0,
-      status: '검수대기', emp: empName
+      status: '검수대기', emp: empName,
+      rowNum: wire.rowNum || ''
     });
-    // 생산시트 Q열 체인생산중량 업데이트
-    if (wire.rowNum) {
-      syncToSheet('updateChainProd', {
-        rowNum: wire.rowNum, meltNo: wire.meltNo||'', wireType: wire.wtype||'',
-        chainProd: it.weight, haeri: haeri, emp: empName
-      });
-    }
     made++;
   }
   return {success:true, made, haeriSum};
@@ -439,18 +431,12 @@ async function fbSaveWeldsBatch(items, empName) {
       no: weldNo, chainNo: it.no, meltNo: chain.meltNo||'',
       weld: it.weight, inc, emp: empName, ts: serverTimestamp()
     }, {merge:true});
-    // 백그라운드로 구글 시트에도 반영
+    // 백그라운드로 구글 시트에도 반영 (rowNum 포함 → 생산시트 AB~AD열 자동 반영)
     syncToSheet('updateWeldLog', {
       no: weldNo, chainNo: it.no, meltNo: chain.meltNo||'',
-      weld: it.weight, inc, left: chain.left||0, emp: empName
+      weld: it.weight, inc, left: chain.left||0, emp: empName,
+      rowNum: chain.rowNum || ''
     });
-    // 생산시트 Q열 용접후중량 업데이트
-    if (chain.rowNum) {
-      syncToSheet('updateWeldAfter', {
-        rowNum: chain.rowNum, meltNo: chain.meltNo||'',
-        weldAfter: it.weight, emp: empName
-      });
-    }
     made++;
   }
   return {success:true, made, incSum};
