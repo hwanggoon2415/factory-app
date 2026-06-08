@@ -152,7 +152,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;heigh
 </div>
 
 <div class="screen active" id="home">
-  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v55</div></div>
+  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v56</div></div>
   <div class="datebar" id="homeDateBar"></div>
   <div class="scrollbody">
     <div class="home-group">
@@ -563,6 +563,7 @@ function initApp() {
       else if (sc === 'chainProd') { openChainProd(); }
       else if (sc === 'weldProd') { openWeldProd(); }
       else if (sc === 'inventory') { openInventory(); }
+      else if (sc === 'processEdit') { openProcessEdit(); }
       else { enterDept(); }
     }
   } catch(e) {}
@@ -661,6 +662,7 @@ function openMenu() {
     WELD:     [{ico:'✅', title:'용접 작업', desc:'체인 투입 → 용접 후 중량', action:function(){openWeldProd();}}],
     MGMT:     [
       {ico:'📊', title:'재고·생산현황', desc:'선재/체인 재고 · 용접 이력', action:function(){openInventory();}},
+      {ico:'✏️', title:'공정값 수정', desc:'잘못 입력된 중량값 수정', action:function(){openProcessEdit();}},
       {ico:'📋', title:'작업지시 등록', desc:'새 용해 · 공정 투입', action:function(){openOrderInput();}},
       {ico:'⚙️', title:'초기 세팅', desc:'부서 비밀번호 · 작업자 관리', action:function(){openSetup();}}
     ],
@@ -1878,6 +1880,161 @@ async function doSaveWeldLot() {
     else toast('❌ ' + (r.error || '저장 실패'), 3000, 'err');
   } catch(e) { hideLoad(); toast('❌ 연결 오류', 3000, 'err'); }
 }
+
+// ── 관리부 공정값 수정 ──────────────────────────────────────────
+async function openProcessEdit() {
+  saveSession('processEdit');
+  document.getElementById('listTitle').textContent = '✏️ 공정값 수정';
+  document.getElementById('listHdr').style.background = S.deptColor;
+  var _lb = document.getElementById('listBack'); _lb.onclick = function(){saveSession('menu');openMenu();}; _lb.textContent = '← 메뉴';
+  showLoad();
+  var rows = [];
+  try { var r = await apiGet('getRows', {}); rows = r.data || []; } catch(e) {}
+  hideLoad();
+
+  var body = document.getElementById('listBody'); body.innerHTML = '';
+
+  if (!rows.length) {
+    body.innerHTML = '<div class="empty"><div class="eico">📭</div><div class="etxt">등록된 공정이 없습니다</div></div>';
+    show('listSc'); return;
+  }
+
+  var byDate = {};
+  rows.forEach(function(r) {
+    var d = r.date || '날짜없음';
+    if (!byDate[d]) byDate[d] = [];
+    byDate[d].push(r);
+  });
+
+  Object.keys(byDate).sort().reverse().forEach(function(date) {
+    var dLabel = document.createElement('div');
+    dLabel.style.cssText = 'font-size:15px;font-weight:700;color:#888;padding:14px 4px 6px;border-bottom:1px solid #eee;margin-bottom:4px';
+    dLabel.textContent = date;
+    body.appendChild(dLabel);
+
+    byDate[date].forEach(function(row) {
+      var step = row.weldAfter ? '✅ 용접완료' : row.chainProd ? '⚙️ 기계완료' : row.wireReal ? '⚗️ 선재완료' : '📋 대기';
+      var card = document.createElement('div');
+      card.className = 'row-card';
+      card.style.cssText = 'border-left-color:' + S.deptColor + ';cursor:pointer';
+      card.innerHTML =
+        '<div style="display:flex;justify-content:space-between;align-items:center">' +
+          '<div>' +
+            '<div class="row-title">' + (row.meltNo||'-') + ' \xb7 ' + (row.wireType||'-') + '</div>' +
+            '<div class="row-sub">' + step + ' \xa0|\xa0 ' + (row.chainType||'-') + '</div>' +
+          '</div>' +
+          '<div style="font-size:22px">\u203a</div>' +
+        '</div>' +
+        '<div class="row-info" style="margin-top:6px;font-size:15px">' +
+          '\uc120\uc7ac <b style="color:' + (row.wireReal ? '#2e7d32' : '#bbb') + '">' + fmt(row.wireReal||0) + 'g</b>' +
+          ' \u2192 \uccb4\uc778 <b style="color:' + (row.chainProd ? '#1565c0' : '#bbb') + '">' + fmt(row.chainProd||0) + 'g</b>' +
+          ' \u2192 \ud574\ub9ac <b style="color:' + (row.haeri ? '#e53935' : '#bbb') + '">' + fmt(row.haeri||0) + 'g</b>' +
+          ' \u2192 \uc6a9\uc811 <b style="color:' + (row.weldAfter ? '#6a1b9a' : '#bbb') + '">' + fmt(row.weldAfter||0) + 'g</b>' +
+        '</div>';
+      card.onclick = function() { openProcessEditRow(row); };
+      body.appendChild(card);
+    });
+  });
+
+  show('listSc');
+}
+
+function openProcessEditRow(row) {
+  var fields = [
+    {key:'wireReal',  label:'\uc120\uc7ac \ud6c4\uc911\ub7c9',   color:'#2e7d32', val: row.wireReal||0},
+    {key:'chainProd', label:'\uccb4\uc778 \uc0dd\uc0b0\uc911\ub7c9', color:'#1565c0', val: row.chainProd||0},
+    {key:'haeri',     label:'\ud574\ub9ac',          color:'#e53935', val: row.haeri||0},
+    {key:'weldAfter', label:'\uc6a9\uc811 \ud6c4\uc911\ub7c9',   color:'#6a1b9a', val: row.weldAfter||0},
+  ];
+
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:500;display:flex;align-items:flex-end;justify-content:center';
+
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:22px 22px 0 0;padding:24px 20px 32px;width:100%;max-width:520px;max-height:85vh;overflow-y:auto';
+
+  var fieldsHtml = fields.map(function(f) {
+    return '<div style="margin-bottom:14px">' +
+      '<div style="font-size:16px;color:#666;font-weight:600;margin-bottom:6px">' + f.label + '</div>' +
+      '<div style="display:flex;align-items:center;gap:10px">' +
+        '<input type="number" data-key="' + f.key + '" value="' + f.val + '" ' +
+          'style="flex:1;font-size:24px;font-weight:700;border:2px solid ' + f.color + ';border-radius:12px;padding:12px 14px;outline:none;text-align:right;color:' + f.color + '">' +
+        '<span style="font-size:18px;color:#888;font-weight:600">g</span>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  box.innerHTML =
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">' +
+      '<div>' +
+        '<div style="font-size:20px;font-weight:800">' + (row.meltNo||'-') + '</div>' +
+        '<div style="font-size:15px;color:#888;margin-top:2px">' + (row.wireType||'-') + ' \xb7 ' + (row.chainType||'-') + '</div>' +
+      '</div>' +
+      '<button id="peClose" style="background:none;border:none;font-size:28px;color:#bbb;cursor:pointer;line-height:1">\u2715</button>' +
+    '</div>' +
+    '<div style="background:#fff3e0;border-radius:12px;padding:12px 14px;margin-bottom:18px;font-size:14px;color:#e65100">' +
+      '\u26a0\ufe0f \uc218\uc815\ub41c \uac12\uc740 Firebase\uc640 \uad6c\uae00 \uc2dc\ud2b8\uc5d0 \uc989\uc2dc \ubc18\uc601\ub429\ub2c8\ub2e4.' +
+    '</div>' +
+    fieldsHtml +
+    '<div style="display:flex;gap:12px;margin-top:8px">' +
+      '<button id="peCancel" style="flex:1;padding:16px;font-size:18px;font-weight:700;border:2px solid #ddd;border-radius:12px;background:#f5f5f5;color:#555;cursor:pointer">\ucde8\uc18c</button>' +
+      '<button id="peConfirm" style="flex:1;padding:16px;font-size:18px;font-weight:700;border:none;border-radius:12px;background:#b71c1c;color:#fff;cursor:pointer">\ud83d\udcbe \uc218\uc815\ud558\uae30</button>' +
+    '</div>';
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+  box.querySelector('#peClose').onclick = function() { overlay.remove(); };
+  document.getElementById('peCancel').onclick = function() { overlay.remove(); };
+  document.getElementById('peConfirm').onclick = function() {
+    var changed = {};
+    fields.forEach(function(f) {
+      var inp = box.querySelector('[data-key="' + f.key + '"]');
+      var newVal = parseFloat(inp.value);
+      if (!isNaN(newVal) && newVal !== f.val) changed[f.key] = newVal;
+    });
+    if (!Object.keys(changed).length) { toast('\ubcc0\uacbd\ub41c \uac12\uc774 \uc5c6\uc2b5\ub2c8\ub2e4', 1500); return; }
+    overlay.remove();
+    requirePin(function() { doProcessEdit(row, changed); });
+  };
+}
+
+async function doProcessEdit(row, changed) {
+  showLoad();
+  try {
+    var fbFs = window._fbFirestore;
+    var rowRef = fbFs.doc(window._db, 'rows', 'row_' + row.rowNum);
+    await fbFs.updateDoc(rowRef, Object.assign({}, changed, {editTs: new Date().toISOString(), editBy: '\uad00\ub9ac\ubd80\uc218\uc815'}));
+
+    // wireReal 수정 시 wireLots.left 동기화
+    if (changed.wireReal !== undefined) {
+      var wlId = String(row.rowNum) + '-W';
+      try { await fbFs.updateDoc(fbFs.doc(window._db, 'wireLots', wlId), {left: changed.wireReal, claimed: changed.wireReal}); } catch(e) {}
+      syncToSheet('updateWireReal', {meltNo: row.meltNo||'', wireType: row.wireType||'', wireReal: changed.wireReal, emp:'\uad00\ub9ac\ubd80\uc218\uc815'});
+    }
+
+    // chainProd/haeri 수정 시 chainLots 동기화
+    if (changed.chainProd !== undefined || changed.haeri !== undefined) {
+      var clId = String(row.rowNum) + '-W-C';
+      var cu = {};
+      if (changed.chainProd !== undefined) cu.left = changed.chainProd;
+      if (changed.haeri !== undefined) cu.haeri = changed.haeri;
+      try { await fbFs.updateDoc(fbFs.doc(window._db, 'chainLots', clId), cu); } catch(e) {}
+    }
+
+    syncToSheet('updateProcessEdit', Object.assign({rowNum: row.rowNum, meltNo: row.meltNo||'', emp:'\uad00\ub9ac\ubd80\uc218\uc815'}, changed));
+
+    hideLoad();
+    var labels = {wireReal:'\uc120\uc7ac\ud6c4\uc911\ub7c9', chainProd:'\uccb4\uc778\uc0dd\uc0b0', haeri:'\ud574\ub9ac', weldAfter:'\uc6a9\uc811\ud6c4\uc911\ub7c9'};
+    var msg = Object.keys(changed).map(function(k){ return (labels[k]||k)+' '+fmt(changed[k])+'g'; }).join(', ');
+    toast('\u2705 \uc218\uc815 \uc644\ub8cc: ' + msg, 2500, 'ok');
+    openProcessEdit();
+  } catch(e) {
+    hideLoad();
+    toast('\u274c \uc218\uc815 \uc2e4\ud328: ' + e.message, 2500, 'err');
+  }
+}
+
 
 // ── 관리부 재고/현황 ──
 async function openInventory() {
