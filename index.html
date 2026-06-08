@@ -152,7 +152,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;heigh
 </div>
 
 <div class="screen active" id="home">
-  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v53</div></div>
+  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v55</div></div>
   <div class="datebar" id="homeDateBar"></div>
   <div class="scrollbody">
     <div class="home-group">
@@ -545,6 +545,27 @@ function initApp() {
     var inp = document.getElementById('inpSc');
     if (inp && inp.classList.contains('active') && S.screenMode === 'check') { pollCheck(); }
   }, 12000);
+
+  // ── 새로고침 복원 ──────────────────────────────────────────────
+  try {
+    var sess = JSON.parse(sessionStorage.getItem('fa_sess') || 'null');
+    if (sess && sess.dept) {
+      S.dept = sess.dept; S.deptName = sess.deptName; S.deptColor = sess.deptColor;
+      // 부서 헤더 복원
+      ['menuHdr','listHdr','inpHdr','lotHdr','loginHdr'].forEach(function(id) {
+        var el = document.getElementById(id); if (el) el.style.background = S.deptColor;
+      });
+      var sc = sess.screen || 'home';
+      if (sc === 'menu') { openMenu(); }
+      else if (sc === 'list_wire') { openList('wire'); }
+      else if (sc === 'wireCheck') { openWireCheck(); }
+      else if (sc === 'chainCheck') { openChainCheck(); }
+      else if (sc === 'chainProd') { openChainProd(); }
+      else if (sc === 'weldProd') { openWeldProd(); }
+      else if (sc === 'inventory') { openInventory(); }
+      else { enterDept(); }
+    }
+  } catch(e) {}
 }
 
 // Firebase 준비 완료 후 앱 초기화
@@ -570,7 +591,7 @@ function show(id) {
   document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
   document.getElementById(id).classList.add('active');
 }
-function goHome() { S.loginPin = ''; show('home'); }
+function goHome() { S.loginPin = ''; clearSession(); show('home'); }
 function goMenu() { show('menuSc'); }
 
 function login(code, name, color) {
@@ -579,6 +600,19 @@ function login(code, name, color) {
   document.getElementById('loginHdr').style.background = color;
   renderDots('loginDots', 0);
   show('loginSc');
+}
+
+// 현재 부서 세션 저장 (새로고침 복원용)
+function saveSession(screen) {
+  try {
+    sessionStorage.setItem('fa_sess', JSON.stringify({
+      dept: S.dept, deptName: S.deptName, deptColor: S.deptColor,
+      screen: screen || 'home'
+    }));
+  } catch(e) {}
+}
+function clearSession() {
+  try { sessionStorage.removeItem('fa_sess'); } catch(e) {}
 }
 
 function loginKey(k) {
@@ -608,11 +642,11 @@ async function doLoginVerify() {
 }
 
 function enterDept() {
-  if (S.dept === 'MATERIAL') openList('wire');       // 자재실 → 용해 목록 바로
-  else if (S.dept === 'MACHINE') openWireCheck();    // 기계실 → 입고확인 먼저 (체인생산 버튼 제공)
-  else if (S.dept === 'WELD') openChainCheck();        // 용접실 → 체인 입고확인 먼저
-  else if (S.dept === 'MGMT') openMenu();             // 관리부 → 메뉴
-  else openMenu();                                    // 그 외 부서는 메뉴 유지
+  if (S.dept === 'MATERIAL') { saveSession('list_wire'); openList('wire'); }
+  else if (S.dept === 'MACHINE') { saveSession('wireCheck'); openWireCheck(); }
+  else if (S.dept === 'WELD') { saveSession('chainCheck'); openChainCheck(); }
+  else if (S.dept === 'MGMT') { saveSession('menu'); openMenu(); }
+  else { saveSession('menu'); openMenu(); }
 }
 
 function openMenu() {
@@ -1470,6 +1504,7 @@ async function reloadLots(silent) {
 }
 
 async function openChainProd() {
+  saveSession('chainProd');
   S.lotKind = 'chain'; S.basket = {}; S.fields = {prodWeight:0}; S.prodLens = {};
   document.getElementById('lotTitle').textContent = '체인 생산 · 선재 투입';
   document.getElementById('lotHdr').style.background = S.deptColor;
@@ -1491,6 +1526,7 @@ async function openChainProd() {
 }
 
 async function openWeldProd() {
+  saveSession('weldProd');
   S.lotKind = 'weld'; S.basket = {}; S.fields = {prodWeight:0};
   document.getElementById('lotTitle').textContent = '용접 · 체인 투입';
   document.getElementById('lotHdr').style.background = S.deptColor;
@@ -1845,6 +1881,7 @@ async function doSaveWeldLot() {
 
 // ── 관리부 재고/현황 ──
 async function openInventory() {
+  saveSession('inventory');
   document.getElementById('listTitle').textContent = '재고 · 생산현황';
   document.getElementById('listHdr').style.background = S.deptColor;
   var _lib = document.getElementById('listBack'); _lib.onclick = goHome; _lib.textContent = '← 홈';
@@ -1997,8 +2034,8 @@ function demoChainLots() {
 }
 
 // ── 입고 검수(선재/체인 공용) — 줄마다 측정중량 입력, 자재실 용해 입력과 동일 형태 ──
-function openWireCheck()  { loadCheck('wire'); }
-function openChainCheck() { loadCheck('chain'); }
+function openWireCheck()  { saveSession('wireCheck');  loadCheck('wire'); }
+function openChainCheck() { saveSession('chainCheck'); loadCheck('chain'); }
 
 async function loadCheck(kind) {
   S.checkKind = kind;
