@@ -949,13 +949,14 @@ function buildCard(r, mode) {
 }
 
 
-function openWireGroupInp(meltNo, rows) {
+async function openWireGroupInp(meltNo, rows) {
   S.inpMode = 'wire_group';
   S.screenMode = '';
-  // 긴급전달 이력 반영 (캐시 또는 실시간)
+  // 긴급전달 이력 실시간 조회
   var urgentMap = {};
   try {
-    var allLots = S._wireLotCache || [];
+    var wlr = await apiGet('getWireLotsByStatus', {});
+    var allLots = wlr.data || [];
     allLots.forEach(function(w) {
       if (w.isUrgent && w.rowNum) {
         if (!urgentMap[w.rowNum]) urgentMap[w.rowNum] = 0;
@@ -967,27 +968,6 @@ function openWireGroupInp(meltNo, rows) {
     r.urgentSent = urgentMap[r.rowNum] || 0;
     return r;
   });
-  // 캐시 없으면 비동기로 업데이트 (화면 먼저 그리고 나중에 갱신)
-  if (!S._wireLotCache || !S._wireLotCache.length) {
-    apiGet('getWireLotsByStatus', {}).then(function(wlr) {
-      S._wireLotCache = wlr.data || [];
-      // 잔량 재계산 후 화면 업데이트
-      var um = {};
-      S._wireLotCache.forEach(function(w) {
-        if (w.isUrgent && w.rowNum) {
-          if (!um[w.rowNum]) um[w.rowNum] = 0;
-          um[w.rowNum] += (w.claimed || 0);
-        }
-      });
-      rows.forEach(function(r) {
-        r.urgentSent = um[r.rowNum] || 0;
-        var planEl = document.getElementById('urgSent_' + r.rowNum);
-        if (planEl && r.urgentSent > 0) {
-          planEl.innerHTML = ' · <span style="color:#e65100">전달 ' + fmt(r.urgentSent) + 'g · 잔량 ' + fmt(r.wirePlan - r.urgentSent) + 'g</span>';
-        }
-      });
-    }).catch(function(){});
-  }
   document.getElementById('saveBtn').style.display = '';
   var _in = document.getElementById('inpNav'); if (_in) _in.style.display = 'none';
   S.selRow = rows[0];
@@ -2695,10 +2675,9 @@ function renderCheck() {
           '<div style="font-size:24px;font-weight:800;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + size + lenTxt + '</div>' +
           '<div style="font-size:18px;color:#666;margin-top:6px;font-weight:600">번호 ' + x.no + '</div>' +
           '<div style="font-size:19px;color:#1565c0;margin-top:5px;font-weight:700">' + srcLbl + ' ' + fmt(x.claimed) + 'g' +
-            (x.isUrgent ? ' <span style="font-size:14px;color:#e65100;font-weight:600">· 긴급전달 ' + (x.seq||'') + '차</span>' : '') +
+            (x.isUrgent ? ' <span style="font-size:14px;background:#fff3e0;color:#e65100;padding:2px 6px;border-radius:4px">긴급 ' + (x.seq||'') + '차</span>' : '') +
             (bad ? ' <span style="color:#c62828">· 불일치 재확인</span>' : '') +
           '</div>' +
-          (x.left !== undefined ? '<div style="font-size:15px;color:#e65100;margin-top:3px">잔량 ' + fmt(x.left) + 'g</div>' : '') +
         '</div>' +
         '<div class="inp-field grn" style="width:160px;height:64px;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:flex-end;padding:0 14px;border-radius:14px" onclick="openCheckKP(\'' + x.no + '\')">'+
           '<span class="fv" id="chk_' + x.no + '" style="font-size:26px;font-weight:800">' + fmt(cur) + '</span><span class="fu" style="font-size:16px;margin-left:4px">g</span>' +
