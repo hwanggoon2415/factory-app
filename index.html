@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>생산공정 관리 v69</title>
+<title>생산공정 관리 v70</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;height:100dvh;overflow:hidden;touch-action:manipulation;user-select:none;}
@@ -152,7 +152,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;heigh
 </div>
 
 <div class="screen active" id="home">
-  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v69</div></div>
+  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v70</div></div>
   <div class="datebar" id="homeDateBar"></div>
   <div class="scrollbody">
     <div class="home-group">
@@ -278,37 +278,37 @@ async function fbVerifyEmp(pin, dept) {
 
 
 // ── 긴급전달 ─────────────────────────────────────────────────
-async function fbUrgentTransfer(rowNum, sendWeight, empName) {
-  // 원본 wireLot 조회
+// 후중량 입력 전/후 모두 가능. row 정보 기반으로 전달 로트 생성
+async function fbUrgentTransfer(row, sendWeight, empName) {
+  const rowNum = row.rowNum;
   const origNo = String(rowNum) + '-W';
-  const origRef = doc(db, 'wireLots', origNo);
-  const origSnap = await getDoc(origRef);
-  if (!origSnap.exists()) throw new Error('선재 로트를 찾을 수 없습니다');
-  const orig = origSnap.data();
-  const currentLeft = orig.left || 0;
-  if (sendWeight > currentLeft) throw new Error('보낼 중량(' + sendWeight + 'g)이 잔량(' + currentLeft + 'g)보다 많습니다');
 
-  // 전달 횟수 계산 (기존 P1, P2... 개수)
+  // 전달 횟수 계산 (기존 -P 로트 개수)
   const allSnap = await getDocs(collection(db, 'wireLots'));
   const existingP = allSnap.docs.filter(d => d.id.startsWith(origNo + '-P')).length;
   const partNo = origNo + '-P' + (existingP + 1);
+  const seq = existingP + 1;
 
-  // 전달 로트 생성
+  // 전달 로트 생성 (검수대기 → 기계실 입고확인 대기)
   await setDoc(doc(db, 'wireLots', partNo), {
-    no: partNo, parentNo: origNo,
-    meltNo: orig.meltNo||'', rowNum: rowNum,
-    wtype: orig.wtype||'', cont: orig.cont||'', mat: orig.mat||'',
+    no: partNo, parentNo: origNo, seq: seq,
+    meltNo: row.meltNo||'', rowNum: rowNum,
+    wtype: row.wireType||'', cont: row.content||'', mat: row.material||'',
     left: sendWeight, claimed: sendWeight,
-    chainType: orig.chainType||'', chainLen: orig.chainLen||'', chainWt: orig.chainWt||0,
+    chainType: row.chainType||'', chainLen: row.chainLen||'', chainWt: row.chainWt||0,
     status: '검수대기', isUrgent: true,
     emp: empName, ts: serverTimestamp()
   });
 
-  // 원본 잔량 차감
-  const newLeft = currentLeft - sendWeight;
-  await updateDoc(origRef, { left: newLeft });
+  // 원본 wireLot 있으면 잔량 차감, 없으면 스킵 (후중량 미입력 상태)
+  const origRef = doc(db, 'wireLots', origNo);
+  const origSnap = await getDoc(origRef);
+  if (origSnap.exists()) {
+    const newLeft = Math.max(0, (origSnap.data().left || 0) - sendWeight);
+    await updateDoc(origRef, { left: newLeft });
+  }
 
-  return { success: true, partNo, newLeft, sendWeight };
+  return { success: true, partNo, seq, sendWeight };
 }
 
 // 선재 후중량 저장 (단건)
@@ -1123,25 +1123,27 @@ async function openUrgentList() {
   _lb.textContent = '← 메뉴';
   showLoad();
 
+  // 전체 rows 조회 (후중량 입력 전/후 모두)
   var rows = [];
-  try { var r = await apiGet('getRows', {dept: S.dept}); rows = r.data || []; } catch(e) {}
+  try { var r = await apiGet('getRows', {}); rows = r.data || []; } catch(e) {}
 
-  // 선재후중량 입력 완료된 것만 (wireLots 잔량도 조회)
-  var doneRows = rows.filter(function(r) { return r.wireReal > 0; });
+  // 용접 완료된 것 제외, 체인생산 완료 안된 것만 (아직 처리 필요한 것)
+  var urgentRows = rows.filter(function(r) { return !r.chainProd; });
 
-  // wireLots에서 각 rowNum의 잔량 가져오기
+  // wireLots에서 이미 전달된 건 조회 (rowNum별 전달 횟수)
   var wireLotSnap = [];
   try {
     var wlr = await apiGet('getWireLotsByStatus', {});
     wireLotSnap = wlr.data || [];
   } catch(e) {}
 
-  // rowNum별 잔량 맵
-  var leftMap = {};
+  // rowNum별 긴급전달 이력 (P로트만)
+  var urgentMap = {};
   wireLotSnap.forEach(function(w) {
-    if (w.rowNum && w.status !== '사용됨') {
-      if (!leftMap[w.rowNum]) leftMap[w.rowNum] = 0;
-      leftMap[w.rowNum] += (w.left || 0);
+    if (w.parentNo && w.isUrgent) {
+      var rn = w.rowNum;
+      if (!urgentMap[rn]) urgentMap[rn] = [];
+      urgentMap[rn].push(w);
     }
   });
 
@@ -1150,16 +1152,36 @@ async function openUrgentList() {
   var body = document.getElementById('listBody');
   body.innerHTML = '';
 
-  if (!doneRows.length) {
-    body.innerHTML = '<div class="empty"><div class="eico">📭</div><div class="etxt">긴급전달 가능한 선재가 없습니다<br><span style="font-size:15px;color:#aaa">선재 후중량 입력 후 사용 가능합니다</span></div></div>';
+  if (!urgentRows.length) {
+    body.innerHTML = '<div class="empty"><div class="eico">📭</div><div class="etxt">긴급전달 가능한 항목이 없습니다</div></div>';
     show('listSc'); return;
   }
 
-  doneRows.forEach(function(row) {
-    var left = leftMap[row.rowNum] !== undefined ? leftMap[row.rowNum] : row.wireReal;
+  urgentRows.forEach(function(row) {
+    var history = urgentMap[row.rowNum] || [];
+    var totalSent = history.reduce(function(s, w) { return s + (w.claimed||0); }, 0);
+    var wirePlan = row.wirePlan || 0;
+
+    // 이력 표시
+    var histHtml = '';
+    if (history.length) {
+      histHtml = '<div style="margin-top:8px;padding:8px;background:#fff8e1;border-radius:8px">' +
+        '<div style="font-size:11px;color:#e65100;font-weight:500;margin-bottom:4px">전달 이력</div>';
+      history.forEach(function(w, i) {
+        var ts = w.ts && w.ts.toDate ? w.ts.toDate().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : '';
+        histHtml += '<div style="font-size:12px;color:#555;display:flex;justify-content:space-between">' +
+          '<span>' + (i+1) + '차 전달 · ' + (w.emp||'') + ' ' + ts + '</span>' +
+          '<span style="font-weight:500;color:#e65100">' + fmt(w.claimed) + 'g</span>' +
+        '</div>';
+      });
+      histHtml += '<div style="font-size:12px;font-weight:500;color:#e65100;border-top:0.5px solid #ffd180;margin-top:4px;padding-top:4px;display:flex;justify-content:space-between">' +
+        '<span>총 전달</span><span>' + fmt(totalSent) + 'g</span></div>' +
+        '</div>';
+    }
+
     var card = document.createElement('div');
     card.className = 'row-card';
-    card.style.cssText = 'border-left-color:' + S.deptColor + ';border-left-width:3px';
+    card.style.cssText = 'border-left-color:#e65100;border-left-width:3px';
     card.innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:center">' +
         '<div>' +
@@ -1167,17 +1189,14 @@ async function openUrgentList() {
           '<div class="row-sub">' + (row.wireType||'-') + '</div>' +
         '</div>' +
         '<div style="text-align:right">' +
-          '<div style="font-size:13px;color:var(--color-text-secondary)">후중량</div>' +
-          '<div style="font-size:18px;font-weight:500;color:#2e7d32">' + fmt(row.wireReal) + 'g</div>' +
+          '<div style="font-size:12px;color:var(--color-text-secondary)">예상 ' + fmt(wirePlan) + 'g</div>' +
+          (row.wireReal ? '<div style="font-size:15px;font-weight:500;color:#2e7d32">후중량 ' + fmt(row.wireReal) + 'g</div>' : '<div style="font-size:13px;color:#aaa">후중량 미입력</div>') +
         '</div>' +
       '</div>' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">' +
-        '<div style="font-size:14px;color:#e65100;font-weight:500">잔량 ' + fmt(left) + 'g</div>' +
-        (left > 0
-          ? '<button onclick="event.stopPropagation();openUrgentTransfer(' + row.rowNum + ',' + left + ')" ' +
-            'style="padding:8px 18px;font-size:14px;font-weight:500;background:#e65100;color:#fff;border:none;border-radius:10px;cursor:pointer">🚀 전달하기</button>'
-          : '<span style="font-size:13px;color:#bbb">잔량 없음</span>'
-        ) +
+      histHtml +
+      '<div style="display:flex;justify-content:flex-end;margin-top:10px">' +
+        '<button onclick="event.stopPropagation();openUrgentTransfer(' + row.rowNum + ')" ' +
+          'style="padding:10px 20px;font-size:14px;font-weight:500;background:#e65100;color:#fff;border:none;border-radius:10px;cursor:pointer">🚀 전달하기</button>' +
       '</div>';
     body.appendChild(card);
   });
@@ -1186,9 +1205,9 @@ async function openUrgentList() {
 }
 
 // ── 긴급전달 팝업 ─────────────────────────────────────────────
-function openUrgentTransfer(rowNum, currentLeft) {
+function openUrgentTransfer(rowNum) {
   var row = S.rows.filter(function(r) { return r.rowNum == rowNum; })[0];
-  if (!row) row = {rowNum: rowNum, wireReal: currentLeft, meltNo:'', wireType:'', material:'', content:'', chainType:'', chainLen:'', chainWt:0};
+  if (!row) { toast('❌ 항목을 찾을 수 없습니다', 2000, 'err'); return; }
   if (!row) { toast('❌ 선재 정보를 찾을 수 없습니다', 2000, 'err'); return; }
 
   var overlay = document.createElement('div');
@@ -1206,8 +1225,8 @@ function openUrgentTransfer(rowNum, currentLeft) {
       '<button id="urgClose" style="background:none;border:none;font-size:28px;color:#bbb;cursor:pointer">✕</button>' +
     '</div>' +
     '<div style="background:#fff8e1;border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:15px;color:#e65100">' +
-      '⚠️ 선재 후중량: <b>' + fmt(row.wireReal||currentLeft) + 'g</b> · 현재 잔량: <b>' + fmt(currentLeft||row.wireReal) + 'g</b><br>' +
-      '기계실로 보낼 중량을 입력하세요. 잔량은 나중에 추가 전달 가능합니다.' +
+      (row.wireReal ? '선재 후중량: <b>' + fmt(row.wireReal) + 'g</b><br>' : '⚠️ 후중량 미입력 상태 — 예상중량: <b>' + fmt(row.wirePlan) + 'g</b><br>') +
+      '기계실로 보낼 중량을 입력하세요. 여러 번 나눠서 전달 가능합니다.' +
     '</div>' +
     '<div style="font-size:16px;color:#666;font-weight:600;margin-bottom:8px">보낼 중량 (g)</div>' +
     '<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">' +
@@ -1229,7 +1248,6 @@ function openUrgentTransfer(rowNum, currentLeft) {
   document.getElementById('urgConfirm').onclick = function() {
     var w = parseFloat(document.getElementById('urgWeight').value);
     if (!w || w <= 0) { toast('⚠️ 중량을 입력하세요', 1500, 'err'); return; }
-    if (w > row.wireReal) { toast('⚠️ 선재 후중량(' + fmt(row.wireReal) + 'g)보다 클 수 없습니다', 2000, 'err'); return; }
     overlay.remove();
     requirePin(function() { doUrgentTransfer(row, w); });
   };
@@ -1239,27 +1257,22 @@ async function doUrgentTransfer(row, sendWeight) {
   showLoad();
   try {
     var emp = S.user ? S.user.name : '미확인';
-    var r = await window._fbApi.fbUrgentTransfer(row.rowNum, sendWeight, emp);
+    var r = await window._fbApi.fbUrgentTransfer(row, sendWeight, emp);
     hideLoad();
     if (r.success) {
-      // 구글 시트 선재로트에 전달건 추가
-      syncToSheet('updateWireLot', {
-        no: r.partNo,
+      // 구글 시트 선재로트에 긴급전달 이력 행 추가
+      syncToSheet('addUrgentWireLot', {
+        no: r.partNo, seq: r.seq,
         parentNo: String(row.rowNum) + '-W',
         meltNo: row.meltNo||'', wtype: row.wireType||'',
         mat: row.material||'', cont: row.content||'',
-        left: sendWeight, chainType: row.chainType||'',
+        left: sendWeight, claimed: sendWeight,
+        chainType: row.chainType||'',
         chainLen: row.chainLen||'', chainWt: row.chainWt||0,
         status: '검수대기', rowNum: row.rowNum,
-        emp: emp
+        isUrgent: true, emp: emp
       });
-      // 원본 잔량 업데이트
-      syncToSheet('updateWireLot', {
-        no: String(row.rowNum) + '-W',
-        left: r.newLeft,
-        status: '사용가능', emp: emp
-      });
-      toast('✅ ' + fmt(sendWeight) + 'g 긴급전달 완료 · 잔량 ' + fmt(r.newLeft) + 'g', 2500, 'ok');
+      toast('✅ ' + r.seq + '차 긴급전달 ' + fmt(sendWeight) + 'g 완료', 2500, 'ok');
       openUrgentList();
     }
   } catch(e) {
