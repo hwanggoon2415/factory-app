@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>생산공정 관리 v58</title>
+<title>생산공정 관리 v59</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;height:100dvh;overflow:hidden;touch-action:manipulation;user-select:none;}
@@ -152,7 +152,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;heigh
 </div>
 
 <div class="screen active" id="home">
-  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v58</div></div>
+  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v59</div></div>
   <div class="datebar" id="homeDateBar"></div>
   <div class="scrollbody">
     <div class="home-group">
@@ -237,18 +237,8 @@ const DEMO = false;
 // 공정 행 목록 읽기
 async function fbGetRows(dept) {
   const colRef = collection(db, 'rows');
-  let snap;
-  // 부서별 미완료 항목만 조회 (속도 최적화)
-  if (dept === 'MATERIAL') {
-    snap = await getDocs(query(colRef, where('wireReal', '==', 0)));
-  } else if (dept === 'MACHINE') {
-    snap = await getDocs(query(colRef, where('chainProd', '==', 0)));
-  } else if (dept === 'WELD') {
-    snap = await getDocs(query(colRef, where('weldAfter', '==', 0)));
-  } else {
-    snap = await getDocs(colRef);
-  }
-  // rowNum은 반드시 문서 ID 기준 (시트 행번호와 일치 보장)
+  // 전체 조회 후 앱에서 필터 (wireReal 필드 없는 문서도 포함하기 위해)
+  const snap = await getDocs(colRef);
   const rows = snap.docs.map(d => {
     const data = d.data();
     const idRowNum = parseInt(d.id.replace('row_', '')) || 0;
