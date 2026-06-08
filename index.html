@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>생산공정 관리 v67</title>
+<title>생산공정 관리 v68</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;height:100dvh;overflow:hidden;touch-action:manipulation;user-select:none;}
@@ -152,7 +152,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;heigh
 </div>
 
 <div class="screen active" id="home">
-  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v67</div></div>
+  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v68</div></div>
   <div class="datebar" id="homeDateBar"></div>
   <div class="scrollbody">
     <div class="home-group">
@@ -274,6 +274,41 @@ async function fbVerifyEmp(pin, dept) {
     }
   }
   return {success:false};
+}
+
+
+// ── 긴급전달 ─────────────────────────────────────────────────
+async function fbUrgentTransfer(rowNum, sendWeight, empName) {
+  // 원본 wireLot 조회
+  const origNo = String(rowNum) + '-W';
+  const origRef = doc(db, 'wireLots', origNo);
+  const origSnap = await getDoc(origRef);
+  if (!origSnap.exists()) throw new Error('선재 로트를 찾을 수 없습니다');
+  const orig = origSnap.data();
+  const currentLeft = orig.left || 0;
+  if (sendWeight > currentLeft) throw new Error('보낼 중량(' + sendWeight + 'g)이 잔량(' + currentLeft + 'g)보다 많습니다');
+
+  // 전달 횟수 계산 (기존 P1, P2... 개수)
+  const allSnap = await getDocs(collection(db, 'wireLots'));
+  const existingP = allSnap.docs.filter(d => d.id.startsWith(origNo + '-P')).length;
+  const partNo = origNo + '-P' + (existingP + 1);
+
+  // 전달 로트 생성
+  await setDoc(doc(db, 'wireLots', partNo), {
+    no: partNo, parentNo: origNo,
+    meltNo: orig.meltNo||'', rowNum: rowNum,
+    wtype: orig.wtype||'', cont: orig.cont||'', mat: orig.mat||'',
+    left: sendWeight, claimed: sendWeight,
+    chainType: orig.chainType||'', chainLen: orig.chainLen||'', chainWt: orig.chainWt||0,
+    status: '검수대기', isUrgent: true,
+    emp: empName, ts: serverTimestamp()
+  });
+
+  // 원본 잔량 차감
+  const newLeft = currentLeft - sendWeight;
+  await updateDoc(origRef, { left: newLeft });
+
+  return { success: true, partNo, newLeft, sendWeight };
 }
 
 // 선재 후중량 저장 (단건)
@@ -503,7 +538,7 @@ window._fbApi = {
   fbConfirmWires, fbConfirmChains,
   fbGetWireLots, fbGetChainLots,
   fbSaveChainsBatch, fbSaveWeldsBatch,
-  fbGetInventory, fbCancelLot, fbAddRow
+  fbGetInventory, fbCancelLot, fbAddRow, fbUrgentTransfer
 };
 window._db = db;
 // rows 단일 필드 업데이트
@@ -813,10 +848,14 @@ async function openList(mode) {
           ? '<span style="color:#2e7d32;font-weight:700">' + fmt(r.wireReal) + 'g</span>'
           : '<span style="color:#cfcfcf">—</span>';
         var nameTxt = (doneRow ? '✅ ' : '') + (r.wireType||'-');
-        return '<div style="display:flex;gap:14px;align-items:baseline;padding:7px 0;border-bottom:1px solid #f1f1f1' + (doneRow ? ';opacity:.6' : '') + '">' +
+        var urgentBtn = doneRow
+          ? '<button onclick="event.stopPropagation();openUrgentTransfer(' + r.rowNum + ')" style="margin-left:8px;padding:3px 10px;font-size:12px;font-weight:700;background:#e65100;color:#fff;border:none;border-radius:8px;cursor:pointer;white-space:nowrap">🚀 긴급전달</button>'
+          : '';
+        return '<div style="display:flex;gap:14px;align-items:center;padding:7px 0;border-bottom:1px solid #f1f1f1' + (doneRow ? '' : ';opacity:.5') + '">' +
             '<span style="flex:0 0 96px;font-weight:600;color:#222;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + nameTxt + '</span>' +
             '<span style="flex:0 0 70px;text-align:right;color:#1565c0;font-weight:700">' + fmt(r.wirePlan) + 'g</span>' +
             '<span style="flex:0 0 70px;text-align:right">' + realTxt + '</span>' +
+            urgentBtn +
           '</div>';
       }).join('');
 
@@ -1070,6 +1109,89 @@ function applyWireLocal(items) {
 }
 
 // 저장 후 입력 화면에 그대로 머무름(남은 선재만 다시 표시)
+
+// ── 긴급전달 팝업 ─────────────────────────────────────────────
+function openUrgentTransfer(rowNum) {
+  var row = S.rows.filter(function(r) { return r.rowNum == rowNum; })[0];
+  if (!row) { toast('❌ 선재 정보를 찾을 수 없습니다', 2000, 'err'); return; }
+
+  var overlay = document.createElement('div');
+  overlay.id = 'urgentOverlay';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:500;display:flex;align-items:flex-end;justify-content:center';
+
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:22px 22px 0 0;padding:24px 20px 32px;width:100%;max-width:520px';
+  box.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
+      '<div>' +
+        '<div style="font-size:20px;font-weight:800;color:#e65100">🚀 긴급전달</div>' +
+        '<div style="font-size:15px;color:#666;margin-top:2px">' + (row.meltNo||'-') + ' · ' + (row.wireType||'-') + '</div>' +
+      '</div>' +
+      '<button id="urgClose" style="background:none;border:none;font-size:28px;color:#bbb;cursor:pointer">✕</button>' +
+    '</div>' +
+    '<div style="background:#fff8e1;border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:15px;color:#e65100">' +
+      '⚠️ 선재 전체 중량: <b>' + fmt(row.wireReal) + 'g</b><br>' +
+      '기계실로 보낼 중량을 입력하세요. 잔량은 나중에 추가 전달 가능합니다.' +
+    '</div>' +
+    '<div style="font-size:16px;color:#666;font-weight:600;margin-bottom:8px">보낼 중량 (g)</div>' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">' +
+      '<input id="urgWeight" type="number" placeholder="0" ' +
+        'style="flex:1;font-size:28px;font-weight:700;border:2px solid #e65100;border-radius:12px;padding:12px 14px;outline:none;text-align:right;color:#e65100">' +
+      '<span style="font-size:18px;color:#888;font-weight:600">g</span>' +
+    '</div>' +
+    '<div style="display:flex;gap:12px">' +
+      '<button id="urgCancel" style="flex:1;padding:16px;font-size:18px;font-weight:700;border:2px solid #ddd;border-radius:12px;background:#f5f5f5;color:#555;cursor:pointer">취소</button>' +
+      '<button id="urgConfirm" style="flex:1;padding:16px;font-size:18px;font-weight:700;border:none;border-radius:12px;background:#e65100;color:#fff;cursor:pointer">🚀 전달하기</button>' +
+    '</div>';
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+  document.getElementById('urgClose').onclick = function() { overlay.remove(); };
+  document.getElementById('urgCancel').onclick = function() { overlay.remove(); };
+  document.getElementById('urgWeight').focus();
+  document.getElementById('urgConfirm').onclick = function() {
+    var w = parseFloat(document.getElementById('urgWeight').value);
+    if (!w || w <= 0) { toast('⚠️ 중량을 입력하세요', 1500, 'err'); return; }
+    if (w > row.wireReal) { toast('⚠️ 선재 후중량(' + fmt(row.wireReal) + 'g)보다 클 수 없습니다', 2000, 'err'); return; }
+    overlay.remove();
+    requirePin(function() { doUrgentTransfer(row, w); });
+  };
+}
+
+async function doUrgentTransfer(row, sendWeight) {
+  showLoad();
+  try {
+    var emp = S.user ? S.user.name : '미확인';
+    var r = await window._fbApi.fbUrgentTransfer(row.rowNum, sendWeight, emp);
+    hideLoad();
+    if (r.success) {
+      // 구글 시트 선재로트에 전달건 추가
+      syncToSheet('updateWireLot', {
+        no: r.partNo,
+        parentNo: String(row.rowNum) + '-W',
+        meltNo: row.meltNo||'', wtype: row.wireType||'',
+        mat: row.material||'', cont: row.content||'',
+        left: sendWeight, chainType: row.chainType||'',
+        chainLen: row.chainLen||'', chainWt: row.chainWt||0,
+        status: '검수대기', rowNum: row.rowNum,
+        emp: emp
+      });
+      // 원본 잔량 업데이트
+      syncToSheet('updateWireLot', {
+        no: String(row.rowNum) + '-W',
+        left: r.newLeft,
+        status: '사용가능', emp: emp
+      });
+      toast('✅ ' + fmt(sendWeight) + 'g 긴급전달 완료 · 잔량 ' + fmt(r.newLeft) + 'g', 2500, 'ok');
+      openList('wire');
+    }
+  } catch(e) {
+    hideLoad();
+    toast('❌ ' + (e.message || '전달 실패'), 2500, 'err');
+  }
+}
+
 function afterWireSave(meltNo) {
   var remain = S.rows.filter(function(r) { return r.meltNo === meltNo && !r.wireReal; });
   if (remain.length) {
