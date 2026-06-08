@@ -1581,6 +1581,8 @@ function renderProduceList(box, list) {
   }
 
 
+  box.innerHTML = html;  // ★ html을 box에 삽입 (체인생산·용접 목록)
+
   // 차이값 클릭 이벤트
   setTimeout(function() {
     var el1 = document.getElementById('kp_diff_chainBad2');
