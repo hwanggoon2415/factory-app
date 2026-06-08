@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>생산공정 관리 v72</title>
+<title>생산공정 관리 v73</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;height:100dvh;overflow:hidden;touch-action:manipulation;user-select:none;}
@@ -152,7 +152,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;heigh
 </div>
 
 <div class="screen active" id="home">
-  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v72</div></div>
+  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v73</div></div>
   <div class="datebar" id="homeDateBar"></div>
   <div class="scrollbody">
     <div class="home-group">
@@ -805,6 +805,11 @@ async function openList(mode) {
   else {
     try { var r = await apiGet('getRows', {dept:S.dept}); S.rows = r.data || []; }
     catch(e) { S.rows = demoRows(); }
+    // wireLots 캐시 (긴급전달 잔량 표시용)
+    try {
+      var wlr = await apiGet('getWireLotsByStatus', {});
+      S._wireLotCache = wlr.data || [];
+    } catch(e) { S._wireLotCache = []; }
   }
   hideLoad();
 
@@ -947,6 +952,21 @@ function buildCard(r, mode) {
 function openWireGroupInp(meltNo, rows) {
   S.inpMode = 'wire_group';
   S.screenMode = '';
+  // 긴급전달 이력 반영 (wireLots에서 P로트 합계 조회)
+  var urgentMap = {};
+  try {
+    var allLots = S._wireLotCache || [];
+    allLots.forEach(function(w) {
+      if (w.isUrgent && w.rowNum) {
+        if (!urgentMap[w.rowNum]) urgentMap[w.rowNum] = 0;
+        urgentMap[w.rowNum] += (w.claimed || 0);
+      }
+    });
+  } catch(e) {}
+  rows = rows.map(function(r) {
+    r.urgentSent = urgentMap[r.rowNum] || 0;
+    return r;
+  });
   document.getElementById('saveBtn').style.display = '';
   var _in = document.getElementById('inpNav'); if (_in) _in.style.display = 'none';
   S.selRow = rows[0];
@@ -986,7 +1006,9 @@ function openWireGroupInp(meltNo, rows) {
       '<div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #f0f0f0;">' +
         '<div style="flex:1;min-width:0">' +
           '<div style="font-size:22px;font-weight:800;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (row.wireType||'-') + '</div>' +
-          '<div style="font-size:16px;color:#666;margin-top:4px;font-weight:600">예상 ' + fmt(row.wirePlan) + 'g</div>' +
+          '<div style="font-size:16px;color:#666;margin-top:4px;font-weight:600">예상 ' + fmt(row.wirePlan) + 'g' +
+            (row.urgentSent ? ' · <span style="color:#e65100">전달 ' + fmt(row.urgentSent) + 'g · 잔량 ' + fmt(row.wirePlan - row.urgentSent) + 'g</span>' : '') +
+          '</div>' +
         '</div>' +
         '<div class="inp-field grn" style="width:120px;flex-shrink:0;cursor:pointer" onclick="openKPWireByNum(' + row.rowNum + ')">' +
           '<span class="fv" id="' + fid + '">0</span>' +
@@ -2649,7 +2671,11 @@ function renderCheck() {
         '<div style="flex:1;min-width:0">' +
           '<div style="font-size:24px;font-weight:800;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + size + lenTxt + '</div>' +
           '<div style="font-size:18px;color:#666;margin-top:6px;font-weight:600">번호 ' + x.no + '</div>' +
-          '<div style="font-size:19px;color:#1565c0;margin-top:5px;font-weight:700">' + srcLbl + ' ' + fmt(x.claimed) + 'g' + (bad ? ' <span style="color:#c62828">· 불일치 재확인</span>' : '') + '</div>' +
+          '<div style="font-size:19px;color:#1565c0;margin-top:5px;font-weight:700">' + srcLbl + ' ' + fmt(x.claimed) + 'g' +
+            (x.isUrgent ? ' <span style="font-size:14px;color:#e65100;font-weight:600">· 긴급전달 ' + (x.seq||'') + '차</span>' : '') +
+            (bad ? ' <span style="color:#c62828">· 불일치 재확인</span>' : '') +
+          '</div>' +
+          (x.left !== undefined ? '<div style="font-size:15px;color:#e65100;margin-top:3px">잔량 ' + fmt(x.left) + 'g</div>' : '') +
         '</div>' +
         '<div class="inp-field grn" style="width:160px;height:64px;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:flex-end;padding:0 14px;border-radius:14px" onclick="openCheckKP(\'' + x.no + '\')">'+
           '<span class="fv" id="chk_' + x.no + '" style="font-size:26px;font-weight:800">' + fmt(cur) + '</span><span class="fu" style="font-size:16px;margin-left:4px">g</span>' +
