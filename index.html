@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>생산공정 관리 v51</title>
+<title>생산공정 관리 v52</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;height:100dvh;overflow:hidden;touch-action:manipulation;user-select:none;}
@@ -152,7 +152,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;heigh
 </div>
 
 <div class="screen active" id="home">
-  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v51</div></div>
+  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v52</div></div>
   <div class="datebar" id="homeDateBar"></div>
   <div class="scrollbody">
     <div class="home-group">
@@ -1880,11 +1880,63 @@ function invCardSection(title, kind, list) {
       : (x.no + ' · ' + (x.ctype||'') + ' · 잔량 ' + fmt(x.left) + 'g · 해리 ' + fmt(x.haeri) + 'g');
     var btn = cancelled
       ? '<button class="invbtn rs" onclick="lotRestore(\'' + kind + '\',\'' + x.no + '\')">↩ 복구</button>'
-      : '<button class="invbtn cx" onclick="lotCancel(\'' + kind + '\',\'' + x.no + '\')">🗑 취소</button>';
+      : '<div style="display:flex;gap:8px">' +
+          '<button class="invbtn" style="background:#e8f5e9;color:#2e7d32" onclick="lotEdit(\'' + kind + '\',\'' + x.no + '\',\'' + fmt(x.left) + '\')">✏️ 수정</button>' +
+          '<button class="invbtn cx" onclick="lotCancel(\'' + kind + '\',\'' + x.no + '\')">🗑 취소</button>' +
+        '</div>';
     h += '<div class="row-card" style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;padding:12px 14px;border-left-color:' + S.deptColor + (cancelled ? ';opacity:.5' : '') + '">' +
-         '<div style="font-size:17px;color:#333;min-width:0">' + info + badge + '</div>' + btn + '</div>';
+         '<div style="font-size:17px;color:#333;min-width:0;flex:1">' + info + badge + '</div>' + btn + '</div>';
   });
   wrap.innerHTML = h; return wrap;
+}
+
+function lotEdit(kind, no, currentVal) {
+  // 수정할 값 선택 팝업
+  var overlay = document.createElement('div');
+  overlay.id = 'editPopup';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px';
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:20px;padding:28px;max-width:420px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.3)';
+  box.innerHTML =
+    '<div style="font-size:22px;font-weight:800;margin-bottom:16px">✏️ 잔량 수정</div>' +
+    '<div style="font-size:17px;color:#666;margin-bottom:16px">번호: <b>' + no + '</b></div>' +
+    '<div style="font-size:17px;color:#666;margin-bottom:8px">현재 잔량: <b>' + currentVal + 'g</b></div>' +
+    '<div style="margin-bottom:16px">' +
+      '<div style="font-size:16px;color:#888;margin-bottom:6px">새 잔량 (g)</div>' +
+      '<input id="editValInp" type="number" style="width:100%;font-size:24px;font-weight:700;border:2px solid #1565c0;border-radius:10px;padding:12px;outline:none;text-align:right" value="' + currentVal + '">' +
+    '</div>' +
+    '<div style="display:flex;gap:12px">' +
+      '<button id="editCancel" style="flex:1;padding:16px;font-size:18px;font-weight:700;border:2px solid #ddd;border-radius:12px;background:#f5f5f5;color:#555;cursor:pointer">취소</button>' +
+      '<button id="editConfirm" style="flex:1;padding:16px;font-size:18px;font-weight:700;border:none;border-radius:12px;background:#1565c0;color:#fff;cursor:pointer">수정하기</button>' +
+    '</div>';
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+  document.getElementById('editCancel').onclick = function() { overlay.remove(); };
+  document.getElementById('editConfirm').onclick = function() {
+    var newVal = parseFloat(document.getElementById('editValInp').value);
+    if (isNaN(newVal) || newVal < 0) { alert('올바른 값을 입력하세요'); return; }
+    overlay.remove();
+    requirePin(function() { doLotEdit(kind, no, newVal); });
+  };
+}
+
+async function doLotEdit(kind, no, newLeft) {
+  showLoad();
+  try {
+    var colName = kind === 'wire' ? 'wireLots' : 'chainLots';
+    var api = window._fbApi;
+    // Firebase 업데이트
+    var { doc, updateDoc } = window._fbFirestore;
+    await updateDoc(doc(window._db, colName, no), {left: newLeft});
+    // 구글 시트 반영
+    syncToSheet(kind === 'wire' ? 'updateWireLot' : 'updateChainLot', {
+      no: no, left: newLeft, status: '사용가능'
+    });
+    hideLoad();
+    toast('✅ ' + no + ' 잔량이 ' + fmt(newLeft) + 'g으로 수정됐습니다', 2500, 'ok');
+    openInventory();
+  } catch(e) { hideLoad(); toast('❌ 수정 실패: ' + e.message, 2500, 'err'); }
 }
 
 function lotCancel(kind, no) {
