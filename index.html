@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>생산공정 관리 v78</title>
+<title>생산공정 관리 v79</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;height:100dvh;overflow:hidden;touch-action:manipulation;user-select:none;}
@@ -152,7 +152,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;heigh
 </div>
 
 <div class="screen active" id="home">
-  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v78</div></div>
+  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v79</div></div>
   <div class="datebar" id="homeDateBar"></div>
   <div class="scrollbody">
     <div class="home-group">
@@ -899,6 +899,12 @@ async function openList(mode) {
       var wlr = await apiGet('getWireLotsByStatus', {});
       S._wireLotCache = wlr.data || [];
     } catch(e) { S._wireLotCache = []; }
+    // 행별 전달 합계 부착 (목록 카드 잔량 표시용)
+    var _um = {};
+    (S._wireLotCache || []).forEach(function(w) {
+      if (w.isUrgent && w.rowNum) _um[w.rowNum] = (_um[w.rowNum]||0) + (w.claimed||0);
+    });
+    S.rows.forEach(function(r) { r.urgentSent = _um[r.rowNum] || 0; });
   }
   hideLoad();
 
@@ -1011,6 +1017,9 @@ function buildCard(r, mode) {
         '순은 <b>' + fmt(r.silver) + 'g</b>&nbsp;&nbsp; 알로이 <b>' + fmt(r.alloy) + 'g</b>&nbsp;&nbsp; 연주로 <b>' + fmt(r.furnace) + 'g</b><br>' +
         '재말수령 <b>' + fmt(r.scrapRecv) + 'g</b>&nbsp;&nbsp; 재말투입 <b>' + fmt(r.scrapUse) + 'g</b>&nbsp;&nbsp; 재말잔량 <b>' + fmt(r.scrapLeft) + 'g</b><br>' +
         '불량선재 <b>' + fmt(r.badWire) + 'g</b>&nbsp;&nbsp; 예상중량 <b style="color:#1565c0;font-size:20px">' + fmt(r.wirePlan) + 'g</b>' +
+        (r.urgentSent > 0
+          ? '<br>🚀 전달 <b style="color:#e65100;font-size:20px">' + fmt(r.urgentSent) + 'g</b>&nbsp;&nbsp; 잔량 <b style="color:#2e7d32;font-size:20px">' + fmt(Math.max(0, (r.wirePlan||0) - r.urgentSent)) + 'g</b>'
+          : '') +
       '</div>';
   }
   if (mode === 'chain') {
@@ -1099,7 +1108,7 @@ async function openWireGroupInp(meltNo, rows) {
           '<div style="font-size:16px;color:#666;margin-top:4px;font-weight:600">예상 ' + fmt(row.wirePlan) + 'g' +
             '<span id="urgSent_' + row.rowNum + '">' +
             (row.urgentSent > 0
-              ? ' · <span style="color:#e65100">전달 ' + fmt(row.urgentSent) + 'g · 잔량 ' + fmt(Math.max(0, (row.wireReal || row.wirePlan || 0) - row.urgentSent)) + 'g</span>'
+              ? ' · <span style="color:#e65100;font-weight:700">전달 ' + fmt(row.urgentSent) + 'g · 잔량 ' + fmt(Math.max(0, (row.wireReal || row.wirePlan || 0) - row.urgentSent)) + 'g</span>'
               : '') +
             '</span>' +
           '</div>' +
@@ -1163,6 +1172,10 @@ function quickUrgentTransfer(rowNum) {
 
   // 현재 입력된 중량 읽기
   var currentWeight = S.fields.wireWeights[rowNum] || 0;
+  var base = currentWeight || row.wirePlan || 0;
+  var baseLbl = currentWeight > 0 ? '입력한 실중량' : '예상중량';
+  var sent = row.urgentSent || 0;
+  var left = Math.max(0, base - sent);
 
   var overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.55);z-index:500;display:flex;align-items:flex-end;justify-content:center';
@@ -1172,54 +1185,90 @@ function quickUrgentTransfer(rowNum) {
   box.innerHTML =
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">' +
       '<div>' +
-        '<div style="font-size:20px;font-weight:500;color:#e65100">🚀 긴급전달</div>' +
-        '<div style="font-size:14px;color:#666;margin-top:2px">' + (row.wireType||'-') + ' · 예상 ' + fmt(row.wirePlan) + 'g</div>' +
+        '<div style="font-size:22px;font-weight:800;color:#e65100">🚀 일부 먼저 보내기</div>' +
+        '<div style="font-size:16px;color:#666;margin-top:2px">' + (row.meltNo||'') + ' · ' + (row.wireType||'-') + '</div>' +
       '</div>' +
-      '<button id="qurgClose" style="background:none;border:none;font-size:28px;color:#bbb;cursor:pointer">✕</button>' +
+      '<button id="qurgClose" style="background:none;border:none;font-size:32px;color:#bbb;cursor:pointer">✕</button>' +
     '</div>' +
-    (function(){
-      var base = currentWeight || row.wirePlan || 0;
-      var sent = row.urgentSent || 0;
-      var left = Math.max(0, base - sent);
-      var baseStr = currentWeight > 0 ? '입력값 ' + fmt(currentWeight) + 'g' : '예상 ' + fmt(row.wirePlan) + 'g';
-      return '<div style="background:#fff8e1;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:14px;color:#e65100">' +
-        '기준 ' + baseStr +
-        (sent > 0 ? ' · 기전달 ' + fmt(sent) + 'g' : '') +
-        ' · <b>잔량 ' + fmt(left) + 'g</b>' +
-        '</div>';
-    })() +
-    '<div style="font-size:15px;color:#666;font-weight:500;margin-bottom:8px">보낼 중량 (g)</div>' +
-    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">' +
-      '<input id="qurgWeight" type="number" value="' + (currentWeight || '') + '" placeholder="0" ' +
-        'style="flex:1;font-size:28px;font-weight:500;border:2px solid #e65100;border-radius:12px;padding:12px 14px;outline:none;text-align:right;color:#e65100">' +
-      '<span style="font-size:18px;color:#888;font-weight:500">g</span>' +
+    '<div style="background:#fff8e1;border-radius:14px;padding:16px;margin-bottom:16px">' +
+      '<div style="display:flex;justify-content:space-between;font-size:19px;color:#555;padding:4px 0">' +
+        '<span>' + baseLbl + '</span><b style="font-size:22px;color:#111">' + fmt(base) + 'g</b></div>' +
+      '<div style="display:flex;justify-content:space-between;font-size:19px;color:#555;padding:4px 0">' +
+        '<span>이미 보낸 양</span><b style="font-size:22px;color:#e65100">' + fmt(sent) + 'g</b></div>' +
+      '<div style="display:flex;justify-content:space-between;font-size:19px;color:#555;padding:6px 0 0;border-top:2px solid #ffd180;margin-top:4px">' +
+        '<span><b>보낼 수 있는 양</b></span><b style="font-size:26px;color:#2e7d32">' + fmt(left) + 'g</b></div>' +
     '</div>' +
+    '<div style="font-size:17px;color:#666;font-weight:700;margin-bottom:8px">어디로 보내나요?</div>' +
+    '<div style="display:flex;gap:10px;margin-bottom:16px">' +
+      '<button id="qurgDestM" style="flex:1;padding:16px;font-size:19px;font-weight:800;border:2px solid #e65100;border-radius:12px;background:#e65100;color:#fff;cursor:pointer">⚙️ 기계실</button>' +
+      '<button id="qurgDestO" style="flex:1;padding:16px;font-size:19px;font-weight:800;border:2px solid #ddd;border-radius:12px;background:#f5f5f5;color:#777;cursor:pointer">🚚 외주</button>' +
+    '</div>' +
+    '<div style="font-size:17px;color:#666;font-weight:700;margin-bottom:8px">보낼 중량 (g)</div>' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">' +
+      '<input id="qurgWeight" type="number" inputmode="decimal" placeholder="0" ' +
+        'style="flex:1;font-size:32px;font-weight:800;border:3px solid #e65100;border-radius:12px;padding:14px;outline:none;text-align:right;color:#e65100">' +
+      '<span style="font-size:20px;color:#888;font-weight:700">g</span>' +
+    '</div>' +
+    '<div id="qurgLeftTxt" style="font-size:18px;color:#888;text-align:right;margin-bottom:18px;min-height:24px"></div>' +
     '<div style="display:flex;gap:12px">' +
-      '<button id="qurgCancel" style="flex:1;padding:16px;font-size:17px;font-weight:500;border:0.5px solid #ddd;border-radius:12px;background:#f5f5f5;color:#555;cursor:pointer">취소</button>' +
-      '<button id="qurgConfirm" style="flex:1;padding:16px;font-size:17px;font-weight:500;border:none;border-radius:12px;background:#e65100;color:#fff;cursor:pointer">🚀 전달하기</button>' +
+      '<button id="qurgCancel" style="flex:1;padding:18px;font-size:19px;font-weight:700;border:2px solid #ddd;border-radius:12px;background:#f5f5f5;color:#555;cursor:pointer">취소</button>' +
+      '<button id="qurgConfirm" style="flex:1.4;padding:18px;font-size:19px;font-weight:800;border:none;border-radius:12px;background:#e65100;color:#fff;cursor:pointer">🚀 보내기</button>' +
     '</div>';
 
   overlay.appendChild(box);
   document.body.appendChild(overlay);
 
   var inp = document.getElementById('qurgWeight');
-  inp.focus(); inp.select();
+  inp.focus();
+
+  // 행선지 토글 (기본: 기계실)
+  var qDest = 'MACHINE';
+  function paintQDest() {
+    var m = document.getElementById('qurgDestM'), o = document.getElementById('qurgDestO');
+    var cf = document.getElementById('qurgConfirm');
+    if (qDest === 'MACHINE') {
+      m.style.cssText = 'flex:1;padding:16px;font-size:19px;font-weight:800;border:2px solid #e65100;border-radius:12px;background:#e65100;color:#fff;cursor:pointer';
+      o.style.cssText = 'flex:1;padding:16px;font-size:19px;font-weight:800;border:2px solid #ddd;border-radius:12px;background:#f5f5f5;color:#777;cursor:pointer';
+      cf.style.background = '#e65100'; cf.textContent = '🚀 기계실로 보내기';
+    } else {
+      m.style.cssText = 'flex:1;padding:16px;font-size:19px;font-weight:800;border:2px solid #ddd;border-radius:12px;background:#f5f5f5;color:#777;cursor:pointer';
+      o.style.cssText = 'flex:1;padding:16px;font-size:19px;font-weight:800;border:2px solid #546e7a;border-radius:12px;background:#546e7a;color:#fff;cursor:pointer';
+      cf.style.background = '#546e7a'; cf.textContent = '🚚 외주로 보내기';
+    }
+  }
+  document.getElementById('qurgDestM').onclick = function() { qDest = 'MACHINE'; paintQDest(); };
+  document.getElementById('qurgDestO').onclick = function() { qDest = 'OUTSOURCE'; paintQDest(); };
+  paintQDest();
+
+  // 실시간 남는 양 표시
+  inp.oninput = function() {
+    var w = parseFloat(this.value);
+    var t = document.getElementById('qurgLeftTxt');
+    if (!isNaN(w) && w > 0) {
+      var after = left - w;
+      t.innerHTML = after < 0
+        ? '<b style="color:#c62828">⚠️ 보낼 수 있는 양보다 ' + fmt(-after) + 'g 많습니다</b>'
+        : '보내고 남는 양: <b style="color:#2e7d32;font-size:20px">' + fmt(after) + 'g</b>';
+    } else t.textContent = '';
+  };
 
   document.getElementById('qurgClose').onclick = function() { overlay.remove(); };
   document.getElementById('qurgCancel').onclick = function() { overlay.remove(); };
   document.getElementById('qurgConfirm').onclick = function() {
     var w = parseFloat(inp.value);
     if (!w || w <= 0) { toast('⚠️ 중량을 입력하세요', 1500, 'err'); return; }
+    var dest = qDest;
     overlay.remove();
-    requirePin(function() { doQuickUrgentTransfer(row, w); });
+    requirePin(function() { doQuickUrgentTransfer(row, w, dest); });
   };
 }
 
-async function doQuickUrgentTransfer(row, sendWeight) {
+async function doQuickUrgentTransfer(row, sendWeight, dest) {
   showLoad();
   try {
     var emp = S.user ? S.user.name : '미확인';
-    var r = await window._fbApi.fbUrgentTransfer(row, sendWeight, emp);
+    var isOut = (dest === 'OUTSOURCE');
+    var r = await window._fbApi.fbUrgentTransfer(row, sendWeight, emp, dest);
     hideLoad();
     if (r.success) {
       syncToSheet('addUrgentWireLot', {
@@ -1230,10 +1279,24 @@ async function doQuickUrgentTransfer(row, sendWeight) {
         left: sendWeight, claimed: sendWeight,
         chainType: row.chainType||'',
         chainLen: row.chainLen||'', chainWt: row.chainWt||0,
-        status: '검수대기', rowNum: row.rowNum,
+        status: isOut ? '외주출고' : '검수대기', rowNum: row.rowNum,
         isUrgent: true, emp: emp
       });
-      toast('✅ ' + r.seq + '차 긴급전달 ' + fmt(sendWeight) + 'g 완료 — 기계실로 전달됨', 2500, 'ok');
+      if (isOut) {
+        syncToSheet('addOutsourceOut', {
+          no: r.partNo, meltNo: row.meltNo||'', wtype: row.wireType||'',
+          chainType: row.chainType||'', outWeight: sendWeight, emp: emp
+        });
+      }
+      // 화면의 전달/잔량 표시 즉시 갱신
+      row.urgentSent = (row.urgentSent || 0) + sendWeight;
+      var sp = document.getElementById('urgSent_' + row.rowNum);
+      if (sp) {
+        sp.innerHTML = ' · <span style="color:#e65100;font-weight:700">전달 ' + fmt(row.urgentSent) + 'g · 잔량 ' + fmt(Math.max(0, (row.wireReal || row.wirePlan || 0) - row.urgentSent)) + 'g</span>';
+      }
+      toast(isOut
+        ? '✅ ' + r.seq + '차 ' + fmt(sendWeight) + 'g — 외주로 보냈습니다'
+        : '✅ ' + r.seq + '차 ' + fmt(sendWeight) + 'g — 기계실로 보냈습니다', 2800, 'ok');
     }
   } catch(e) {
     hideLoad();
