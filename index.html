@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>생산공정 관리 v81</title>
+<title>생산공정 관리 v82</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;height:100dvh;overflow:hidden;touch-action:manipulation;user-select:none;}
@@ -152,7 +152,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;heigh
 </div>
 
 <div class="screen active" id="home">
-  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v81</div></div>
+  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v82</div></div>
   <div class="datebar" id="homeDateBar"></div>
   <div class="scrollbody">
     <div class="home-group">
@@ -629,6 +629,20 @@ async function fbGetOutsourceChains() {
   return list;
 }
 
+// ── 테스트 데이터 초기화 (employees/depts 제외 전부 삭제) ─────
+async function fbResetTestData() {
+  const targets = ['rows', 'wireLots', 'chainLots', 'welds', 'shipments'];
+  let deleted = 0;
+  for (const colName of targets) {
+    const snap = await getDocs(collection(db, colName));
+    for (const d of snap.docs) {
+      await deleteDoc(doc(db, colName, d.id));
+      deleted++;
+    }
+  }
+  return {success: true, deleted: deleted};
+}
+
 // 관리부 행 등록 (새 공정 투입)
 async function fbAddRow(rowData) {
   // rowNum이 있으면 row_N 형태로 저장 (구글 시트 행번호와 일치)
@@ -655,7 +669,7 @@ window._fbApi = {
   fbGetInventory, fbCancelLot, fbAddRow, fbUrgentTransfer,
   fbGetShipments, fbAddShipment, fbCancelShipment,
   fbGetOutsourceWires, fbOutsourceReturn, fbGetOutsourceChains,
-  fbChainUrgentTransfer
+  fbChainUrgentTransfer, fbResetTestData
 };
 window._db = db;
 // rows 단일 필드 업데이트
@@ -852,7 +866,8 @@ function openMenu() {
       {ico:'🚚', title:'출하 관리', desc:'업체별 출하 등록 · 이력 조회', action:function(){openShipment();}},
       {ico:'✏️', title:'공정값 수정', desc:'잘못 입력된 중량값 수정', action:function(){openProcessEdit();}},
       {ico:'📋', title:'작업지시 등록', desc:'새 용해 · 공정 투입', action:function(){openOrderInput();}},
-      {ico:'⚙️', title:'초기 세팅', desc:'부서 비밀번호 · 작업자 관리', action:function(){openSetup();}}
+      {ico:'⚙️', title:'초기 세팅', desc:'부서 비밀번호 · 작업자 관리', action:function(){openSetup();}},
+      {ico:'🗑', title:'테스트 데이터 초기화', desc:'생산·로트·출하 기록 전부 삭제 (직원/비밀번호 유지)', action:function(){confirmResetData();}}
     ],
     OUTSOURCE:[{ico:'📥', title:'외주 입고 등록', desc:'가공 완료 체인 입고 → 용접실', action:function(){saveSession('outsourceIn');openOutsourceIn();}}],
     GARANG:   [{ico:'🪢', title:'가랑 작업', desc:'준비 중', action:function(){toast('준비 중',2000);}}],
@@ -2202,6 +2217,7 @@ async function apiPost(data) {
   if (act === 'cancelShipment')  return api.fbCancelShipment(data.no, data.restore);
   if (act === 'outsourceReturn') return api.fbOutsourceReturn(data.item, data.empName);
   if (act === 'chainUrgent')     return api.fbChainUrgentTransfer(data.lot, data.weight, data.len, data.empName);
+  if (act === 'resetTestData')   return api.fbResetTestData();
   throw new Error('Unknown action: ' + act);
 }
 
@@ -3273,6 +3289,35 @@ async function doOutsourceReturn(w, chainWeight, chainLen) {
       openOutsourceIn();
     } else toast('❌ ' + (r.error || '입고 실패'), 2500, 'err');
   } catch(e) { hideLoad(); toast('❌ 입고 실패: ' + e.message, 2500, 'err'); }
+}
+
+// ═══════════════ 테스트 데이터 초기화 (관리부) ═══════════════
+function confirmResetData() {
+  showConfirmPopup(
+    '🗑 테스트 데이터를 전부 삭제할까요?\n\n삭제: 생산행 · 선재/체인 로트 · 용접 이력 · 출하 기록\n유지: 직원 · 부서 비밀번호\n\n⚠️ 되돌릴 수 없습니다!',
+    function() {
+      showConfirmPopup(
+        '정말 삭제하시겠습니까?\n\n마지막 확인입니다.',
+        function() { requirePin(function() { doResetTestData(); }); },
+        function() { return; }
+      );
+    },
+    function() { return; }
+  );
+}
+
+async function doResetTestData() {
+  showLoad();
+  try {
+    var r = await apiPost({action:'resetTestData'});
+    hideLoad();
+    if (r.success) {
+      toast('✅ 초기화 완료 — ' + r.deleted + '건 삭제됨', 3000, 'ok');
+      setTimeout(function() {
+        alert('Firebase 초기화 완료 (' + r.deleted + '건 삭제)\n\n다음 순서:\n1. 구글 시트 → 작업실적 초기화 (아직 안 했다면)\n2. 구글 시트 메뉴 → 생산계획 동기화 (A~P열 → Firebase)\n3. 앱 새로고침 후 테스트 시작');
+      }, 500);
+    } else toast('❌ ' + (r.error || '초기화 실패'), 2500, 'err');
+  } catch(e) { hideLoad(); toast('❌ 초기화 실패: ' + e.message, 3000, 'err'); }
 }
 function invSection(title, lines) {
   var wrap = document.createElement('div');
