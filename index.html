@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>생산공정 관리 v79</title>
+<title>생산공정 관리 v80</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;height:100dvh;overflow:hidden;touch-action:manipulation;user-select:none;}
@@ -152,7 +152,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;heigh
 </div>
 
 <div class="screen active" id="home">
-  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v79</div></div>
+  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v80</div></div>
   <div class="datebar" id="homeDateBar"></div>
   <div class="scrollbody">
     <div class="home-group">
@@ -1462,6 +1462,7 @@ async function openUrgentList() {
   urgentRows.forEach(function(row) {
     var history = urgentMap[row.rowNum] || [];
     var totalSent = history.reduce(function(s, w) { return s + (w.claimed||0); }, 0);
+    row.urgentSent = totalSent;
     var wirePlan = row.wirePlan || 0;
 
     // 이력 표시
@@ -1515,11 +1516,15 @@ async function openUrgentList() {
   show('listSc');
 }
 
-// ── 긴급전달 팝업 ─────────────────────────────────────────────
+// ── 긴급전달 팝업 (입력 화면 팝업과 동일 디자인) ──────────────
 function openUrgentTransfer(rowNum) {
   var row = S.rows.filter(function(r) { return r.rowNum == rowNum; })[0];
   if (!row) { toast('❌ 항목을 찾을 수 없습니다', 2000, 'err'); return; }
-  if (!row) { toast('❌ 선재 정보를 찾을 수 없습니다', 2000, 'err'); return; }
+
+  var base = row.wireReal || row.wirePlan || 0;
+  var baseLbl = row.wireReal ? '선재 후중량' : '예상중량';
+  var sent = row.urgentSent || 0;
+  var left = Math.max(0, base - sent);
 
   var overlay = document.createElement('div');
   overlay.id = 'urgentOverlay';
@@ -1528,35 +1533,43 @@ function openUrgentTransfer(rowNum) {
   var box = document.createElement('div');
   box.style.cssText = 'background:#fff;border-radius:22px 22px 0 0;padding:24px 20px 32px;width:100%;max-width:520px';
   box.innerHTML =
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">' +
       '<div>' +
-        '<div style="font-size:20px;font-weight:800;color:#e65100">🚀 긴급전달</div>' +
-        '<div style="font-size:15px;color:#666;margin-top:2px">' + (row.meltNo||'-') + ' · ' + (row.wireType||'-') + '</div>' +
+        '<div style="font-size:22px;font-weight:800;color:#e65100">🚀 일부 먼저 보내기</div>' +
+        '<div style="font-size:16px;color:#666;margin-top:2px">' + (row.meltNo||'-') + ' · ' + (row.wireType||'-') + '</div>' +
       '</div>' +
-      '<button id="urgClose" style="background:none;border:none;font-size:28px;color:#bbb;cursor:pointer">✕</button>' +
+      '<button id="urgClose" style="background:none;border:none;font-size:32px;color:#bbb;cursor:pointer">✕</button>' +
     '</div>' +
-    '<div style="background:#fff8e1;border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:15px;color:#e65100">' +
-      (row.wireReal ? '선재 후중량: <b>' + fmt(row.wireReal) + 'g</b><br>' : '⚠️ 후중량 미입력 상태 — 예상중량: <b>' + fmt(row.wirePlan) + 'g</b><br>') +
-      '보낼 중량을 입력하세요. 여러 번 나눠서 전달 가능합니다.' +
+    '<div style="background:#fff8e1;border-radius:14px;padding:16px;margin-bottom:16px">' +
+      '<div style="display:flex;justify-content:space-between;font-size:19px;color:#555;padding:4px 0">' +
+        '<span>' + baseLbl + '</span><b style="font-size:22px;color:#111">' + fmt(base) + 'g</b></div>' +
+      '<div style="display:flex;justify-content:space-between;font-size:19px;color:#555;padding:4px 0">' +
+        '<span>이미 보낸 양</span><b style="font-size:22px;color:#e65100">' + fmt(sent) + 'g</b></div>' +
+      '<div style="display:flex;justify-content:space-between;font-size:19px;color:#555;padding:6px 0 0;border-top:2px solid #ffd180;margin-top:4px">' +
+        '<span><b>보낼 수 있는 양</b></span><b style="font-size:26px;color:#2e7d32">' + fmt(left) + 'g</b></div>' +
     '</div>' +
-    '<div style="font-size:16px;color:#666;font-weight:600;margin-bottom:8px">행선지</div>' +
+    '<div style="font-size:17px;color:#666;font-weight:700;margin-bottom:8px">어디로 보내나요?</div>' +
     '<div style="display:flex;gap:10px;margin-bottom:16px">' +
-      '<button id="urgDestM" style="flex:1;padding:14px;font-size:17px;font-weight:700;border:2px solid #e65100;border-radius:12px;background:#e65100;color:#fff;cursor:pointer">⚙️ 기계실</button>' +
-      '<button id="urgDestO" style="flex:1;padding:14px;font-size:17px;font-weight:700;border:2px solid #ddd;border-radius:12px;background:#f5f5f5;color:#777;cursor:pointer">🚚 외주</button>' +
+      '<button id="urgDestM" style="flex:1;padding:16px;font-size:19px;font-weight:800;border:2px solid #e65100;border-radius:12px;background:#e65100;color:#fff;cursor:pointer">⚙️ 기계실</button>' +
+      '<button id="urgDestO" style="flex:1;padding:16px;font-size:19px;font-weight:800;border:2px solid #ddd;border-radius:12px;background:#f5f5f5;color:#777;cursor:pointer">🚚 외주</button>' +
     '</div>' +
-    '<div style="font-size:16px;color:#666;font-weight:600;margin-bottom:8px">보낼 중량 (g)</div>' +
-    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">' +
-      '<input id="urgWeight" type="number" placeholder="0" ' +
-        'style="flex:1;font-size:28px;font-weight:700;border:2px solid #e65100;border-radius:12px;padding:12px 14px;outline:none;text-align:right;color:#e65100">' +
-      '<span style="font-size:18px;color:#888;font-weight:600">g</span>' +
+    '<div style="font-size:17px;color:#666;font-weight:700;margin-bottom:8px">보낼 중량 (g)</div>' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">' +
+      '<input id="urgWeight" type="number" inputmode="decimal" placeholder="0" ' +
+        'style="flex:1;font-size:32px;font-weight:800;border:3px solid #e65100;border-radius:12px;padding:14px;outline:none;text-align:right;color:#e65100">' +
+      '<span style="font-size:20px;color:#888;font-weight:700">g</span>' +
     '</div>' +
+    '<div id="urgLeftTxt" style="font-size:18px;color:#888;text-align:right;margin-bottom:18px;min-height:24px"></div>' +
     '<div style="display:flex;gap:12px">' +
-      '<button id="urgCancel" style="flex:1;padding:16px;font-size:18px;font-weight:700;border:2px solid #ddd;border-radius:12px;background:#f5f5f5;color:#555;cursor:pointer">취소</button>' +
-      '<button id="urgConfirm" style="flex:1;padding:16px;font-size:18px;font-weight:700;border:none;border-radius:12px;background:#e65100;color:#fff;cursor:pointer">🚀 전달하기</button>' +
+      '<button id="urgCancel" style="flex:1;padding:18px;font-size:19px;font-weight:700;border:2px solid #ddd;border-radius:12px;background:#f5f5f5;color:#555;cursor:pointer">취소</button>' +
+      '<button id="urgConfirm" style="flex:1.4;padding:18px;font-size:19px;font-weight:800;border:none;border-radius:12px;background:#e65100;color:#fff;cursor:pointer">🚀 기계실로 보내기</button>' +
     '</div>';
 
   overlay.appendChild(box);
   document.body.appendChild(overlay);
+
+  var inp = document.getElementById('urgWeight');
+  inp.focus();
 
   document.getElementById('urgClose').onclick = function() { overlay.remove(); };
   document.getElementById('urgCancel').onclick = function() { overlay.remove(); };
@@ -1564,19 +1577,32 @@ function openUrgentTransfer(rowNum) {
   var urgDest = 'MACHINE';
   function paintDest() {
     var m = document.getElementById('urgDestM'), o = document.getElementById('urgDestO');
+    var cf = document.getElementById('urgConfirm');
     if (urgDest === 'MACHINE') {
-      m.style.cssText = 'flex:1;padding:14px;font-size:17px;font-weight:700;border:2px solid #e65100;border-radius:12px;background:#e65100;color:#fff;cursor:pointer';
-      o.style.cssText = 'flex:1;padding:14px;font-size:17px;font-weight:700;border:2px solid #ddd;border-radius:12px;background:#f5f5f5;color:#777;cursor:pointer';
+      m.style.cssText = 'flex:1;padding:16px;font-size:19px;font-weight:800;border:2px solid #e65100;border-radius:12px;background:#e65100;color:#fff;cursor:pointer';
+      o.style.cssText = 'flex:1;padding:16px;font-size:19px;font-weight:800;border:2px solid #ddd;border-radius:12px;background:#f5f5f5;color:#777;cursor:pointer';
+      cf.style.background = '#e65100'; cf.textContent = '🚀 기계실로 보내기';
     } else {
-      m.style.cssText = 'flex:1;padding:14px;font-size:17px;font-weight:700;border:2px solid #ddd;border-radius:12px;background:#f5f5f5;color:#777;cursor:pointer';
-      o.style.cssText = 'flex:1;padding:14px;font-size:17px;font-weight:700;border:2px solid #546e7a;border-radius:12px;background:#546e7a;color:#fff;cursor:pointer';
+      m.style.cssText = 'flex:1;padding:16px;font-size:19px;font-weight:800;border:2px solid #ddd;border-radius:12px;background:#f5f5f5;color:#777;cursor:pointer';
+      o.style.cssText = 'flex:1;padding:16px;font-size:19px;font-weight:800;border:2px solid #546e7a;border-radius:12px;background:#546e7a;color:#fff;cursor:pointer';
+      cf.style.background = '#546e7a'; cf.textContent = '🚚 외주로 보내기';
     }
   }
   document.getElementById('urgDestM').onclick = function() { urgDest = 'MACHINE'; paintDest(); };
   document.getElementById('urgDestO').onclick = function() { urgDest = 'OUTSOURCE'; paintDest(); };
-  document.getElementById('urgWeight').focus();
+  // 실시간 남는 양 표시
+  inp.oninput = function() {
+    var w = parseFloat(this.value);
+    var t = document.getElementById('urgLeftTxt');
+    if (!isNaN(w) && w > 0) {
+      var after = left - w;
+      t.innerHTML = after < 0
+        ? '<b style="color:#c62828">⚠️ 보낼 수 있는 양보다 ' + fmt(-after) + 'g 많습니다</b>'
+        : '보내고 남는 양: <b style="color:#2e7d32;font-size:20px">' + fmt(after) + 'g</b>';
+    } else t.textContent = '';
+  };
   document.getElementById('urgConfirm').onclick = function() {
-    var w = parseFloat(document.getElementById('urgWeight').value);
+    var w = parseFloat(inp.value);
     if (!w || w <= 0) { toast('⚠️ 중량을 입력하세요', 1500, 'err'); return; }
     var dest = urgDest;
     overlay.remove();
