@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>생산공정 관리 v87</title>
+<title>생산공정 관리 v88</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;height:100dvh;overflow:hidden;touch-action:manipulation;user-select:none;}
@@ -152,7 +152,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;heigh
 </div>
 
 <div class="screen active" id="home">
-  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v87</div></div>
+  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v88</div></div>
   <div class="datebar" id="homeDateBar"></div>
   <div class="scrollbody">
     <div class="home-group">
@@ -1167,7 +1167,7 @@ async function openWireGroupInp(meltNo, rows) {
   var hasSent = rows.some(function(r) { return (r.urgentSent||0) > 0; });
   html += '<div class="inp-card"><div class="inp-label" style="margin-bottom:10px">선재종류별 실중량 입력</div>' +
     (hasSent
-      ? '<div style="background:#e8f5e9;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:16px;color:#2e7d32;font-weight:700">✅ 🚀먼저 보낸 것은 빼고, <u>저울에 있는 남은 무게만</u> 입력하세요 (다 보냈으면 0)</div>'
+      ? '<div style="background:#e8f5e9;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:16px;color:#2e7d32;font-weight:700">✅ 🚀먼저 보낸 것은 빼고, <u>저울에 있는 남은 무게만</u> 입력 (다 보냈으면 0)<br>⚠️ 저장하면 이 선재 작업은 <u>마감</u>됩니다 — 아직 생산 중이면 🚀로 보내세요</div>'
       : '');
   rows.forEach(function(row) {
     var fid = 'ww_' + row.rowNum;
@@ -1246,12 +1246,33 @@ async function openWireGroupInp(meltNo, rows) {
         overList.push((row.wireType||'선재') + ': 총 ' + fmt(total) + 'g (예상 ' + fmt(plan) + 'g보다 ' + fmt(total - plan) + 'g 많음)');
       }
     });
+    // 총 생산량이 예상보다 5% 이상 적으면 마감 확인 (아직 생산 중인데 실수로 마감하는 것 방지)
+    var underList = [];
+    rows.forEach(function(row) {
+      var w = S.fields.wireWeights[row.rowNum] || 0;
+      var sent = row.urgentSent || 0;
+      var touched = S.fields.touched[row.rowNum];
+      if (w <= 0 && !touched) return;
+      var total = w + sent;
+      var plan = row.wirePlan || 0;
+      if (plan > 0 && total < plan * 0.95) {
+        underList.push((row.wireType||'선재') + ': 총 ' + fmt(total) + 'g (예상 ' + fmt(plan) + 'g보다 ' + fmt(plan - total) + 'g 적음)');
+      }
+    });
     var goSave = function() { requirePin(function() { doSaveWireGroup(rows); }); };
+    var checkUnder = function() {
+      if (underList.length) {
+        showConfirmPopup('⚠️ 예상중량보다 적습니다\n\n' + underList.join('\n') +
+          '\n\n저장하면 이 선재 작업은 [마감]됩니다.\n아직 생산 중이라면 [아니오]를 누르고\n🚀 일부 먼저 보내기를 사용하세요.\n\n작업을 마감할까요?', goSave, function() { return; });
+        return;
+      }
+      goSave();
+    };
     if (overList.length) {
-      showConfirmPopup('⚠️ 예상중량보다 많이 생산됐습니다\n\n' + overList.join('\n') + '\n\n입력한 숫자가 맞습니까?', goSave, function() { return; });
+      showConfirmPopup('⚠️ 예상중량보다 많이 생산됐습니다\n\n' + overList.join('\n') + '\n\n입력한 숫자가 맞습니까?', checkUnder, function() { return; });
       return;
     }
-    goSave();
+    checkUnder();
   };
   show('inpSc');
 }
@@ -2563,6 +2584,7 @@ function submitProduce() {
 
     // 총 생산량(입력 + 먼저 보낸 양)이 투입 선재보다 크면 확인 (오타 방지)
     var overListC = [];
+    var underListC = [];
     items.forEach(function(it) {
       var sentC = (S._chainSentMap && S._chainSentMap[it.no + '-C']) || 0;
       var totalC = it.weight + sentC;
@@ -2570,6 +2592,10 @@ function submitProduce() {
       var wireIn = av ? (av.left || 0) : 0;
       if (wireIn > 0 && totalC > wireIn) {
         overListC.push(it.no + ': 총 ' + fmt(totalC) + 'g (투입 선재 ' + fmt(wireIn) + 'g보다 ' + fmt(totalC - wireIn) + 'g 많음)');
+      }
+      // 투입 선재 대비 10% 이상 적으면 마감 확인 (생산 중 실수 마감 방지)
+      if (wireIn > 0 && it.weight > 0 && totalC < wireIn * 0.9) {
+        underListC.push(it.no + ': 총 ' + fmt(totalC) + 'g (투입 선재 ' + fmt(wireIn) + 'g보다 ' + fmt(wireIn - totalC) + 'g 적음)');
       }
     });
 
@@ -2596,11 +2622,19 @@ function submitProduce() {
     });
     };
 
+    var checkUnderC = function() {
+      if (underListC.length) {
+        showConfirmPopup('⚠️ 투입 선재보다 많이 적습니다\n\n' + underListC.join('\n') +
+          '\n\n저장하면 이 체인 작업은 [마감]됩니다.\n아직 생산 중이라면 [아니오]를 누르고\n🚀 일부 먼저 보내기를 사용하세요.\n\n작업을 마감할까요?', proceedChain, function() { return; });
+        return;
+      }
+      proceedChain();
+    };
     if (overListC.length) {
-      showConfirmPopup('⚠️ 투입 선재보다 많이 입력됐습니다\n\n' + overListC.join('\n') + '\n\n입력한 숫자가 맞습니까?', proceedChain, function() { return; });
+      showConfirmPopup('⚠️ 투입 선재보다 많이 입력됐습니다\n\n' + overListC.join('\n') + '\n\n입력한 숫자가 맞습니까?', checkUnderC, function() { return; });
       return;
     }
-    proceedChain();
+    checkUnderC();
 
   } else {
     var weldItems = [];
