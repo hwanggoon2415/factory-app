@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>생산공정 관리 v82</title>
+<title>생산공정 관리 v83</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;height:100dvh;overflow:hidden;touch-action:manipulation;user-select:none;}
@@ -152,7 +152,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;heigh
 </div>
 
 <div class="screen active" id="home">
-  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v82</div></div>
+  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v83</div></div>
   <div class="datebar" id="homeDateBar"></div>
   <div class="scrollbody">
     <div class="home-group">
@@ -1144,7 +1144,11 @@ async function openWireGroupInp(meltNo, rows) {
     '</div>';
 
   // 선재 목록을 하나의 카드 안에 2열로 배치
-  html += '<div class="inp-card"><div class="inp-label" style="margin-bottom:10px">선재종류별 실중량 입력</div>';
+  var hasSent = rows.some(function(r) { return (r.urgentSent||0) > 0; });
+  html += '<div class="inp-card"><div class="inp-label" style="margin-bottom:10px">선재종류별 실중량 입력</div>' +
+    (hasSent
+      ? '<div style="background:#fff3e0;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:16px;color:#e65100;font-weight:700">⚠️ 🚀먼저 보낸 것까지 <u>포함한 총 생산량</u>을 입력하세요</div>'
+      : '');
   rows.forEach(function(row) {
     var fid = 'ww_' + row.rowNum;
     html +=
@@ -1205,6 +1209,20 @@ async function openWireGroupInp(meltNo, rows) {
   document.getElementById('saveBtn').onclick = function() {
     var hasAny = Object.values(S.fields.wireWeights).some(function(v) { return v > 0; });
     if (!hasAny) { toast('⚠️ 하나 이상 실중량을 입력해주세요', 2000, 'err'); return; }
+    // 먼저 보낸 양보다 작은 입력 차단 (입력 = 먼저 보낸 것 포함 총 생산량)
+    var tooSmall = [];
+    rows.forEach(function(row) {
+      var w = S.fields.wireWeights[row.rowNum] || 0;
+      var sent = row.urgentSent || 0;
+      if (w > 0 && sent > 0 && w < sent) {
+        tooSmall.push((row.wireType||'선재') + ': 입력 ' + fmt(w) + 'g < 먼저 보낸 ' + fmt(sent) + 'g');
+      }
+    });
+    if (tooSmall.length) {
+      alert('⚠️ 입력값이 너무 작습니다!\n\n' + tooSmall.join('\n') +
+        '\n\n후중량은 🚀먼저 보낸 것까지 포함한\n[총 생산량]을 입력해야 합니다.\n\n예) 먼저 2,000g 보내고 남은 게 2,100g이면\n→ 4,100 입력');
+      return;
+    }
     requirePin(function() { doSaveWireGroup(rows); });
   };
   show('inpSc');
@@ -2491,6 +2509,20 @@ function submitProduce() {
       if (w > 0 || l > 0) items.push({no: no, weight: w, chainLen: l});
     });
     if (!items.length) { toast('⚠️ 생산중량 또는 길이를 입력하세요', 2000, 'err'); return; }
+
+    // 먼저 보낸 양보다 작은 입력 차단 (입력 = 먼저 보낸 것 포함 총 생산량)
+    var tooSmallC = [];
+    items.forEach(function(it) {
+      var sentC = (S._chainSentMap && S._chainSentMap[it.no + '-C']) || 0;
+      if (it.weight > 0 && sentC > 0 && it.weight < sentC) {
+        tooSmallC.push(it.no + ': 입력 ' + fmt(it.weight) + 'g < 먼저 보낸 ' + fmt(sentC) + 'g');
+      }
+    });
+    if (tooSmallC.length) {
+      alert('⚠️ 입력값이 너무 작습니다!\n\n' + tooSmallC.join('\n') +
+        '\n\n생산중량은 🚀먼저 보낸 것까지 포함한\n[총 생산량]을 입력해야 합니다.\n\n예) 먼저 2,000g 보내고 남은 게 3,000g이면\n→ 5,000 입력');
+      return;
+    }
 
     var missingWeight = items.filter(function(it) { return !it.weight || it.weight <= 0; });
     var missingLen    = items.filter(function(it) { return !it.chainLen || it.chainLen <= 0; });
