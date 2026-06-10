@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>생산공정 관리 v83</title>
+<title>생산공정 관리 v84</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;height:100dvh;overflow:hidden;touch-action:manipulation;user-select:none;}
@@ -152,7 +152,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;heigh
 </div>
 
 <div class="screen active" id="home">
-  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v83</div></div>
+  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v84</div></div>
   <div class="datebar" id="homeDateBar"></div>
   <div class="scrollbody">
     <div class="home-group">
@@ -999,12 +999,18 @@ async function openList(mode) {
           : '<span style="color:#cfcfcf">—</span>';
         var nameTxt = (doneRow ? '✅ ' : '') + (r.wireType||'-');
         var urgentBtn = '';
-        return '<div style="display:flex;gap:14px;align-items:center;padding:7px 0;border-bottom:1px solid #f1f1f1' + (doneRow ? '' : ';opacity:.5') + '">' +
+        var sentLine = (r.urgentSent > 0)
+          ? '<div style="display:flex;justify-content:flex-end;gap:14px;padding:2px 0 7px;border-bottom:1px solid #f1f1f1;font-size:15px;font-weight:700">' +
+              '<span style="color:#e65100">🚀 전달 ' + fmt(r.urgentSent) + 'g</span>' +
+              '<span style="color:#2e7d32">잔량 ' + fmt(Math.max(0, (r.wireReal || r.wirePlan || 0) - r.urgentSent)) + 'g</span>' +
+            '</div>'
+          : '';
+        return '<div style="display:flex;gap:14px;align-items:center;padding:7px 0;' + (sentLine ? '' : 'border-bottom:1px solid #f1f1f1') + (doneRow ? '' : ';opacity:.5') + '">' +
             '<span style="flex:0 0 96px;font-weight:600;color:#222;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + nameTxt + '</span>' +
             '<span style="flex:0 0 70px;text-align:right;color:#1565c0;font-weight:700">' + fmt(r.wirePlan) + 'g</span>' +
             '<span style="flex:0 0 70px;text-align:right">' + realTxt + '</span>' +
             urgentBtn +
-          '</div>';
+          '</div>' + sentLine;
       }).join('');
 
       var card = document.createElement('div');
@@ -1074,6 +1080,9 @@ function buildCard(r, mode) {
       '<div class="row-sub">' + (r.chainType||'-') + ' &nbsp;|&nbsp; ' + (r.wireType||'-') + '</div>' +
       '<div class="row-info">' +
         '선재후중량 <b style="color:#2e7d32;font-size:20px">' + fmt(r.wireReal) + 'g</b>&nbsp;&nbsp; 계획 <b>' + fmt(r.chainPlan) + 'g</b>' +
+        (r.urgentSent > 0
+          ? '<br>🚀 전달 <b style="color:#e65100;font-size:20px">' + fmt(r.urgentSent) + 'g</b>&nbsp;&nbsp; 잔량 <b style="color:#2e7d32;font-size:20px">' + fmt(Math.max(0, (r.wireReal||0) - r.urgentSent)) + 'g</b>'
+          : '') +
       '</div>';
   }
   if (mode === 'weld') {
@@ -1458,7 +1467,7 @@ async function doChainUrgentTransfer(lot, sendWeight, sendLen) {
       if (!S._chainSentMap) S._chainSentMap = {};
       S._chainSentMap[pKey] = (S._chainSentMap[pKey]||0) + sendWeight;
       var sp = document.getElementById('chSent_' + lot.no);
-      if (sp) sp.innerHTML = ' · <span style="color:#e65100;font-weight:700">🚀 먼저 보냄 ' + fmt(S._chainSentMap[pKey]) + 'g</span>';
+      if (sp) sp.innerHTML = ' · <span style="color:#e65100;font-weight:700">🚀 먼저 보냄 ' + fmt(S._chainSentMap[pKey]) + 'g</span><span style="color:#2e7d32;font-weight:700"> · 잔량 ' + fmt(Math.max(0, (lot.left||0) - S._chainSentMap[pKey])) + 'g</span>';
       toast('✅ ' + r.seq + '차 ' + fmt(sendWeight) + 'g — 용접실로 보냈습니다', 2800, 'ok');
     } else toast('❌ ' + (r.error || '전달 실패'), 2500, 'err');
   } catch(e) {
@@ -2373,7 +2382,7 @@ function renderProduceList(box, list) {
       : ((l.chainType||'-') + lenTxt);
     var chainSent = isChain ? ((S._chainSentMap && S._chainSentMap[l.no + '-C']) || 0) : 0;
     var sentTxt = chainSent > 0
-      ? ' · <span style="color:#e65100;font-weight:700">🚀 먼저 보냄 ' + fmt(chainSent) + 'g</span>'
+      ? ' · <span style="color:#e65100;font-weight:700">🚀 먼저 보냄 ' + fmt(chainSent) + 'g</span><span style="color:#2e7d32;font-weight:700"> · 잔량 ' + fmt(Math.max(0, (l.left||0) - chainSent)) + 'g</span>'
       : '';
     var subTxt = isChain ? ('선재 ' + fmt(l.left) + 'g · ' + l.no + '<span id="chSent_' + l.no + '">' + sentTxt + '</span>') : ('번호 ' + l.no + ' · 체인 ' + fmt(l.left) + 'g');
     var curLen = (S.prodLens && S.prodLens[l.no]) || 0;
