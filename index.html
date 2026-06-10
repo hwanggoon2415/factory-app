@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>생산공정 관리 v75</title>
+<title>생산공정 관리 v76</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;height:100dvh;overflow:hidden;touch-action:manipulation;user-select:none;}
@@ -152,7 +152,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;heigh
 </div>
 
 <div class="screen active" id="home">
-  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v75</div></div>
+  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v76</div></div>
   <div class="datebar" id="homeDateBar"></div>
   <div class="scrollbody">
     <div class="home-group">
@@ -277,11 +277,13 @@ async function fbVerifyEmp(pin, dept) {
 }
 
 
-// ── 긴급전달 ─────────────────────────────────────────────────
+// ── 긴급전달 / 분할전달 ──────────────────────────────────────
 // 후중량 입력 전/후 모두 가능. row 정보 기반으로 전달 로트 생성
-async function fbUrgentTransfer(row, sendWeight, empName) {
+// dest: 'MACHINE'(기계실, 기본) 또는 'OUTSOURCE'(외주)
+async function fbUrgentTransfer(row, sendWeight, empName, dest) {
   const rowNum = row.rowNum;
   const origNo = String(rowNum) + '-W';
+  const isOut = (dest === 'OUTSOURCE');
 
   // 전달 횟수 계산 (기존 -P 로트 개수)
   const allSnap = await getDocs(collection(db, 'wireLots'));
@@ -289,14 +291,14 @@ async function fbUrgentTransfer(row, sendWeight, empName) {
   const partNo = origNo + '-P' + (existingP + 1);
   const seq = existingP + 1;
 
-  // 전달 로트 생성 (검수대기 → 기계실 입고확인 대기)
+  // 전달 로트 생성: 기계실 → 검수대기 / 외주 → 외주출고
   await setDoc(doc(db, 'wireLots', partNo), {
     no: partNo, parentNo: origNo, seq: seq,
     meltNo: row.meltNo||'', rowNum: rowNum,
     wtype: row.wireType||'', cont: row.content||'', mat: row.material||'',
     left: sendWeight, claimed: sendWeight,
     chainType: row.chainType||'', chainLen: row.chainLen||'', chainWt: row.chainWt||0,
-    status: '검수대기', isUrgent: true,
+    status: isOut ? '외주출고' : '검수대기', isUrgent: true, isOutsource: isOut,
     emp: empName, ts: serverTimestamp()
   });
 
@@ -546,6 +548,43 @@ async function fbCancelShipment(no, restore) {
   return {success:true};
 }
 
+// ── 외주 (임가공) ─────────────────────────────────────────────
+// 외주출고 상태 선재 로트 (외주 입고 대기)
+async function fbGetOutsourceWires() {
+  const snap = await getDocs(collection(db, 'wireLots'));
+  return snap.docs.map(d => d.data()).filter(d => d.status === '외주출고');
+}
+
+// 외주 입고 (가공 완료 체인 복귀 → 용접실 검수대기)
+// 생산시트 rows는 건드리지 않음 (외주이력 시트에만 기록)
+async function fbOutsourceReturn(item, empName) {
+  const wRef = doc(db, 'wireLots', item.no);
+  const wSnap = await getDoc(wRef);
+  if (!wSnap.exists()) return {success:false, error:'선재 로트를 찾을 수 없습니다'};
+  const wire = wSnap.data();
+  const haeri = (wire.left||0) - item.chainWeight;
+  // 선재 로트: 사용됨 처리
+  await updateDoc(wRef, {status:'사용됨', chainProd: item.chainWeight, haeri: haeri, prodEmp: empName, prodTs: serverTimestamp()});
+  // 체인 로트 생성 (외주 표시, 검수대기 → 용접실 입고확인 목록에 등장)
+  const chainNo = item.no + '-C';
+  await setDoc(doc(db, 'chainLots', chainNo), {
+    no: chainNo, wireNo: item.no, meltNo: wire.meltNo||'',
+    chainType: wire.chainType||'', left: item.chainWeight, haeri: haeri,
+    chainLen: item.chainLen||0, rowNum: wire.rowNum||0,
+    status: '검수대기', claimed: item.chainWeight, isOutsource: true,
+    emp: empName, ts: serverTimestamp()
+  }, {merge:true});
+  return {success:true, chainNo: chainNo, haeri: haeri};
+}
+
+// 외주 입고 완료 이력 (최근)
+async function fbGetOutsourceChains() {
+  const snap = await getDocs(collection(db, 'chainLots'));
+  const list = snap.docs.map(d => d.data()).filter(d => d.isOutsource);
+  list.sort(function(a, b) { return (b.no||'').localeCompare(a.no||''); });
+  return list;
+}
+
 // 관리부 행 등록 (새 공정 투입)
 async function fbAddRow(rowData) {
   // rowNum이 있으면 row_N 형태로 저장 (구글 시트 행번호와 일치)
@@ -570,7 +609,8 @@ window._fbApi = {
   fbGetWireLots, fbGetChainLots,
   fbSaveChainsBatch, fbSaveWeldsBatch,
   fbGetInventory, fbCancelLot, fbAddRow, fbUrgentTransfer,
-  fbGetShipments, fbAddShipment, fbCancelShipment
+  fbGetShipments, fbAddShipment, fbCancelShipment,
+  fbGetOutsourceWires, fbOutsourceReturn, fbGetOutsourceChains
 };
 window._db = db;
 // rows 단일 필드 업데이트
@@ -661,6 +701,7 @@ function initApp() {
       else if (sc === 'weldProd') { openWeldProd(); }
       else if (sc === 'inventory') { openInventory(); }
       else if (sc === 'shipment') { openShipment(); }
+      else if (sc === 'outsourceIn') { openOutsourceIn(); }
       else if (sc === 'processEdit') { openProcessEdit(); }
       else { enterDept(); }
     }
@@ -756,7 +797,7 @@ function openMenu() {
   var items = {
     MATERIAL: [
       {ico:'🔥', title:'용해 등록', desc:'선재 후중량 입력', action:function(){saveSession('list_wire');openList('wire');}},
-      {ico:'🚀', title:'긴급전달', desc:'선재 부분 즉시 기계실 전달', action:function(){saveSession('urgentList');openUrgentList();}}
+      {ico:'🚀', title:'긴급전달 · 외주출고', desc:'선재 부분 전달 (기계실/외주)', action:function(){saveSession('urgentList');openUrgentList();}}
     ],
     MACHINE:  [{ico:'📥', title:'선재 입고확인', desc:'받은 무게 확인 → 활성화', action:function(){openWireCheck();}},
                {ico:'⛓️', title:'체인 생산', desc:'선재 투입 → 체인 생산', action:function(){openChainProd();}}],
@@ -768,7 +809,7 @@ function openMenu() {
       {ico:'📋', title:'작업지시 등록', desc:'새 용해 · 공정 투입', action:function(){openOrderInput();}},
       {ico:'⚙️', title:'초기 세팅', desc:'부서 비밀번호 · 작업자 관리', action:function(){openSetup();}}
     ],
-    OUTSOURCE:[{ico:'🚚', title:'외주 작업', desc:'준비 중', action:function(){toast('준비 중',2000);}}],
+    OUTSOURCE:[{ico:'📥', title:'외주 입고 등록', desc:'가공 완료 체인 입고 → 용접실', action:function(){saveSession('outsourceIn');openOutsourceIn();}}],
     GARANG:   [{ico:'🪢', title:'가랑 작업', desc:'준비 중', action:function(){toast('준비 중',2000);}}],
     ASSEMBLY: [{ico:'🔗', title:'조립 작업', desc:'준비 중', action:function(){toast('준비 중',2000);}}],
     QUALITY:  [{ico:'🔍', title:'품질 검사', desc:'준비 중', action:function(){toast('준비 중',2000);}}],
@@ -1354,7 +1395,7 @@ async function openUrgentList() {
       history.forEach(function(w, i) {
         var ts = w.ts && w.ts.toDate ? w.ts.toDate().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : '';
         histHtml += '<div style="font-size:12px;color:#555;display:flex;justify-content:space-between">' +
-          '<span>' + (i+1) + '차 전달 · ' + (w.emp||'') + ' ' + ts + '</span>' +
+          '<span>' + (i+1) + '차 전달' + (w.isOutsource ? ' <span style="color:#546e7a;font-weight:600">🚚외주</span>' : '') + ' · ' + (w.emp||'') + ' ' + ts + '</span>' +
           '<span style="font-weight:500;color:#e65100">' + fmt(w.claimed) + 'g</span>' +
         '</div>';
       });
@@ -1419,7 +1460,12 @@ function openUrgentTransfer(rowNum) {
     '</div>' +
     '<div style="background:#fff8e1;border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:15px;color:#e65100">' +
       (row.wireReal ? '선재 후중량: <b>' + fmt(row.wireReal) + 'g</b><br>' : '⚠️ 후중량 미입력 상태 — 예상중량: <b>' + fmt(row.wirePlan) + 'g</b><br>') +
-      '기계실로 보낼 중량을 입력하세요. 여러 번 나눠서 전달 가능합니다.' +
+      '보낼 중량을 입력하세요. 여러 번 나눠서 전달 가능합니다.' +
+    '</div>' +
+    '<div style="font-size:16px;color:#666;font-weight:600;margin-bottom:8px">행선지</div>' +
+    '<div style="display:flex;gap:10px;margin-bottom:16px">' +
+      '<button id="urgDestM" style="flex:1;padding:14px;font-size:17px;font-weight:700;border:2px solid #e65100;border-radius:12px;background:#e65100;color:#fff;cursor:pointer">⚙️ 기계실</button>' +
+      '<button id="urgDestO" style="flex:1;padding:14px;font-size:17px;font-weight:700;border:2px solid #ddd;border-radius:12px;background:#f5f5f5;color:#777;cursor:pointer">🚚 외주</button>' +
     '</div>' +
     '<div style="font-size:16px;color:#666;font-weight:600;margin-bottom:8px">보낼 중량 (g)</div>' +
     '<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">' +
@@ -1437,23 +1483,39 @@ function openUrgentTransfer(rowNum) {
 
   document.getElementById('urgClose').onclick = function() { overlay.remove(); };
   document.getElementById('urgCancel').onclick = function() { overlay.remove(); };
+  // 행선지 토글 (기본: 기계실)
+  var urgDest = 'MACHINE';
+  function paintDest() {
+    var m = document.getElementById('urgDestM'), o = document.getElementById('urgDestO');
+    if (urgDest === 'MACHINE') {
+      m.style.cssText = 'flex:1;padding:14px;font-size:17px;font-weight:700;border:2px solid #e65100;border-radius:12px;background:#e65100;color:#fff;cursor:pointer';
+      o.style.cssText = 'flex:1;padding:14px;font-size:17px;font-weight:700;border:2px solid #ddd;border-radius:12px;background:#f5f5f5;color:#777;cursor:pointer';
+    } else {
+      m.style.cssText = 'flex:1;padding:14px;font-size:17px;font-weight:700;border:2px solid #ddd;border-radius:12px;background:#f5f5f5;color:#777;cursor:pointer';
+      o.style.cssText = 'flex:1;padding:14px;font-size:17px;font-weight:700;border:2px solid #546e7a;border-radius:12px;background:#546e7a;color:#fff;cursor:pointer';
+    }
+  }
+  document.getElementById('urgDestM').onclick = function() { urgDest = 'MACHINE'; paintDest(); };
+  document.getElementById('urgDestO').onclick = function() { urgDest = 'OUTSOURCE'; paintDest(); };
   document.getElementById('urgWeight').focus();
   document.getElementById('urgConfirm').onclick = function() {
     var w = parseFloat(document.getElementById('urgWeight').value);
     if (!w || w <= 0) { toast('⚠️ 중량을 입력하세요', 1500, 'err'); return; }
+    var dest = urgDest;
     overlay.remove();
-    requirePin(function() { doUrgentTransfer(row, w); });
+    requirePin(function() { doUrgentTransfer(row, w, dest); });
   };
 }
 
-async function doUrgentTransfer(row, sendWeight) {
+async function doUrgentTransfer(row, sendWeight, dest) {
   showLoad();
   try {
     var emp = S.user ? S.user.name : '미확인';
-    var r = await window._fbApi.fbUrgentTransfer(row, sendWeight, emp);
+    var isOut = (dest === 'OUTSOURCE');
+    var r = await window._fbApi.fbUrgentTransfer(row, sendWeight, emp, dest);
     hideLoad();
     if (r.success) {
-      // 구글 시트 선재로트에 긴급전달 이력 행 추가
+      // 구글 시트 선재로트에 전달 이력 행 추가
       syncToSheet('addUrgentWireLot', {
         no: r.partNo, seq: r.seq,
         parentNo: String(row.rowNum) + '-W',
@@ -1462,10 +1524,19 @@ async function doUrgentTransfer(row, sendWeight) {
         left: sendWeight, claimed: sendWeight,
         chainType: row.chainType||'',
         chainLen: row.chainLen||'', chainWt: row.chainWt||0,
-        status: '검수대기', rowNum: row.rowNum,
+        status: isOut ? '외주출고' : '검수대기', rowNum: row.rowNum,
         isUrgent: true, emp: emp
       });
-      toast('✅ ' + r.seq + '차 긴급전달 ' + fmt(sendWeight) + 'g 완료', 2500, 'ok');
+      // 외주 출고는 외주이력 시트에도 기록
+      if (isOut) {
+        syncToSheet('addOutsourceOut', {
+          no: r.partNo, meltNo: row.meltNo||'', wtype: row.wireType||'',
+          chainType: row.chainType||'', outWeight: sendWeight, emp: emp
+        });
+      }
+      toast(isOut
+        ? '✅ ' + r.seq + '차 외주출고 ' + fmt(sendWeight) + 'g 완료'
+        : '✅ ' + r.seq + '차 긴급전달 ' + fmt(sendWeight) + 'g 완료', 2500, 'ok');
       openUrgentList();
     }
   } catch(e) {
@@ -1872,6 +1943,8 @@ async function apiGet(action, params) {
   if (action === 'getChainLots')     return { data: await api.fbGetChainLots() };
   if (action === 'getInventory')     return api.fbGetInventory();
   if (action === 'getShipments')     return { data: await api.fbGetShipments() };
+  if (action === 'getOutsourceWires') return { data: await api.fbGetOutsourceWires() };
+  if (action === 'getOutsourceChains') return { data: await api.fbGetOutsourceChains() };
   throw new Error('Unknown action: ' + action);
 }
 async function apiPost(data) {
@@ -1888,6 +1961,7 @@ async function apiPost(data) {
   if (act === 'cancelLot')       return api.fbCancelLot(data.kind, data.no, data.restore);
   if (act === 'addShipment')     return api.fbAddShipment(data);
   if (act === 'cancelShipment')  return api.fbCancelShipment(data.no, data.restore);
+  if (act === 'outsourceReturn') return api.fbOutsourceReturn(data.item, data.empName);
   throw new Error('Unknown action: ' + act);
 }
 
@@ -2493,7 +2567,7 @@ async function openInventory() {
   }
   hideLoad();
   var b = document.getElementById('listBody'); b.innerHTML = '';
-  function active(x) { var st = x.status || '사용가능'; return ['사용가능','취소','검수대기','불일치'].indexOf(st) >= 0; }
+  function active(x) { var st = x.status || '사용가능'; return ['사용가능','취소','검수대기','불일치','외주출고'].indexOf(st) >= 0; }
   b.appendChild(invCardSection('⚗️ 선재 재고', 'wire', (inv.wires || []).filter(active)));
   b.appendChild(invCardSection('⛓️ 체인 재고', 'chain', (inv.chains || []).filter(active)));
   b.appendChild(invSection('✅ 용접 이력', (inv.welds || []).map(function(x) {
@@ -2511,7 +2585,7 @@ function invCardSection(title, kind, list) {
     var st = x.status || '사용가능';
     var cancelled = (st === '취소');
     var badge = (st === '사용가능') ? ''
-      : ' <span style="color:' + (st === '검수대기' ? '#e69500' : '#c62828') + '">· ' + st + '</span>';
+      : ' <span style="color:' + (st === '검수대기' ? '#e69500' : (st === '외주출고' ? '#546e7a' : '#c62828')) + '">· ' + st + '</span>';
     var info = (kind === 'wire')
       ? (x.no + ' · ' + (x.wtype||'') + ' · 잔량 ' + fmt(x.left) + 'g')
       : (x.no + ' · ' + (x.ctype||'') + ' · 잔량 ' + fmt(x.left) + 'g · 해리 ' + fmt(x.haeri) + 'g');
@@ -2800,6 +2874,149 @@ async function doShipCancel(no, restore) {
     } else toast('❌ ' + (r.error || '실패'), 2500, 'err');
   } catch(e) { hideLoad(); toast('❌ 연결 오류', 2500, 'err'); }
 }
+
+// ═══════════════ 외주 (임가공) ═══════════════
+async function openOutsourceIn() {
+  saveSession('outsourceIn');
+  document.getElementById('listTitle').textContent = '📥 외주 입고 등록';
+  document.getElementById('listHdr').style.background = S.deptColor;
+  var _lib = document.getElementById('listBack'); _lib.onclick = goMenu; _lib.textContent = '← 뒤로';
+  showLoad();
+  var pending = [], done = [];
+  try {
+    var r1 = await apiGet('getOutsourceWires', {});
+    pending = r1.data || [];
+  } catch(e) {}
+  try {
+    var r2 = await apiGet('getOutsourceChains', {});
+    done = (r2.data || []).slice(0, 10);
+  } catch(e) {}
+  hideLoad();
+
+  var b = document.getElementById('listBody');
+  b.innerHTML = '';
+
+  // ── 입고 대기 (외주출고 선재) ──
+  var sec1 = document.createElement('div');
+  var h1 = '<div class="row-title" style="margin:8px 0 8px">📦 가공 대기 (' + pending.length + ')</div>';
+  if (!pending.length) {
+    h1 += '<div style="color:#bbb;font-size:17px;margin-bottom:16px">외주출고된 선재가 없습니다</div>';
+  }
+  pending.sort(function(a,b){ return (b.no||'').localeCompare(a.no||''); });
+  pending.forEach(function(w) {
+    h1 += '<div class="row-card" style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;padding:12px 14px;border-left-color:' + S.deptColor + '">' +
+      '<div style="min-width:0;flex:1">' +
+        '<div style="font-size:17px;font-weight:700;color:#333">' + w.no + ' · ' + (w.meltNo||'') + '</div>' +
+        '<div style="font-size:15px;color:#666;margin-top:3px">' + (w.wtype||'') + ' · 출고중량 ' + fmt(w.left) + 'g · ' + (w.chainType||'') + '</div>' +
+      '</div>' +
+      '<button onclick="openOutsourceReturnForm(\'' + w.no + '\')" ' +
+        'style="padding:12px 18px;font-size:15px;font-weight:700;background:' + S.deptColor + ';color:#fff;border:none;border-radius:10px;cursor:pointer;white-space:nowrap">📥 입고</button>' +
+    '</div>';
+  });
+  sec1.innerHTML = h1;
+  b.appendChild(sec1);
+  // 입고 폼에서 사용
+  window._outPending = pending;
+
+  // ── 최근 입고 완료 ──
+  var sec2 = document.createElement('div');
+  var h2 = '<div class="row-title" style="margin:16px 0 8px">✅ 최근 입고 완료</div>';
+  if (!done.length) {
+    h2 += '<div style="color:#bbb;font-size:17px">입고 이력이 없습니다</div>';
+  }
+  done.forEach(function(c) {
+    h2 += '<div class="row-card" style="margin-bottom:8px;padding:12px 14px;border-left-color:#9e9e9e;opacity:.85">' +
+      '<div style="font-size:16px;font-weight:700;color:#333">' + c.no + ' · ' + (c.meltNo||'') + '</div>' +
+      '<div style="font-size:14px;color:#666;margin-top:3px">' + (c.chainType||'') + ' · 체인 ' + fmt(c.left) + 'g · 손실 ' + fmt(c.haeri) + 'g · ' + (c.emp||'') + ' · ' + (c.status||'') + '</div>' +
+    '</div>';
+  });
+  sec2.innerHTML = h2;
+  b.appendChild(sec2);
+
+  show('listSc');
+}
+
+// ── 외주 입고 폼 (팝업) ──
+function openOutsourceReturnForm(no) {
+  var w = (window._outPending || []).filter(function(x) { return x.no === no; })[0];
+  if (!w) { toast('❌ 로트를 찾을 수 없습니다', 2000, 'err'); return; }
+
+  var overlay = document.createElement('div');
+  overlay.id = 'outPopup';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:500;display:flex;align-items:flex-end;justify-content:center';
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:22px 22px 0 0;padding:24px 20px 32px;width:100%;max-width:520px';
+  box.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
+      '<div>' +
+        '<div style="font-size:20px;font-weight:800;color:#546e7a">📥 외주 입고</div>' +
+        '<div style="font-size:15px;color:#666;margin-top:2px">' + w.no + ' · ' + (w.meltNo||'') + ' · ' + (w.wtype||'') + '</div>' +
+      '</div>' +
+      '<button id="outClose" style="background:none;border:none;font-size:28px;color:#bbb;cursor:pointer">✕</button>' +
+    '</div>' +
+    '<div style="background:#eceff1;border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:15px;color:#37474f">' +
+      '출고중량: <b>' + fmt(w.left) + 'g</b> · 체인종류: <b>' + (w.chainType||'-') + '</b><br>' +
+      '가공돼서 돌아온 체인 중량을 입력하세요. 등록하면 용접실 입고확인 목록에 표시됩니다.' +
+    '</div>' +
+    '<div style="font-size:16px;color:#666;font-weight:600;margin-bottom:8px">체인 중량 (g)</div>' +
+    '<input id="outChainW" type="number" inputmode="decimal" placeholder="0" ' +
+      'style="width:100%;box-sizing:border-box;font-size:28px;font-weight:700;border:2px solid #546e7a;border-radius:12px;padding:12px 14px;outline:none;text-align:right;color:#37474f;margin-bottom:6px">' +
+    '<div id="outHaeriTxt" style="font-size:14px;color:#888;text-align:right;margin-bottom:14px">손실(해리): -</div>' +
+    '<div style="font-size:16px;color:#666;font-weight:600;margin-bottom:8px">체인 길이 (m, 선택)</div>' +
+    '<input id="outChainL" type="number" inputmode="decimal" placeholder="선택" ' +
+      'style="width:100%;box-sizing:border-box;font-size:22px;font-weight:700;border:2px solid #ddd;border-radius:12px;padding:12px 14px;outline:none;text-align:right;margin-bottom:20px">' +
+    '<div style="display:flex;gap:12px">' +
+      '<button id="outCancel" style="flex:1;padding:16px;font-size:18px;font-weight:700;border:2px solid #ddd;border-radius:12px;background:#f5f5f5;color:#555;cursor:pointer">취소</button>' +
+      '<button id="outConfirm" style="flex:1.4;padding:16px;font-size:18px;font-weight:700;border:none;border-radius:12px;background:#546e7a;color:#fff;cursor:pointer">📥 입고 등록</button>' +
+    '</div>';
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+  document.getElementById('outClose').onclick = function() { overlay.remove(); };
+  document.getElementById('outCancel').onclick = function() { overlay.remove(); };
+  document.getElementById('outChainW').oninput = function() {
+    var cw = parseFloat(this.value);
+    var t = document.getElementById('outHaeriTxt');
+    if (!isNaN(cw) && cw > 0) {
+      var h = (w.left||0) - cw;
+      t.innerHTML = '손실(해리): <b style="color:' + (h < 0 ? '#c62828' : '#546e7a') + '">' + fmt(h) + 'g</b>' + (h < 0 ? ' ⚠️ 출고중량보다 큽니다' : '');
+    } else t.textContent = '손실(해리): -';
+  };
+  document.getElementById('outChainW').focus();
+  document.getElementById('outConfirm').onclick = function() {
+    var cw = parseFloat(document.getElementById('outChainW').value);
+    if (isNaN(cw) || cw <= 0) { toast('⚠️ 체인 중량을 입력하세요', 1500, 'err'); return; }
+    var cl = parseFloat(document.getElementById('outChainL').value) || 0;
+    overlay.remove();
+    requirePin(function() { doOutsourceReturn(w, cw, cl); });
+  };
+}
+
+async function doOutsourceReturn(w, chainWeight, chainLen) {
+  showLoad();
+  try {
+    var emp = S.user ? S.user.name : '외주';
+    var r = await apiPost({action:'outsourceReturn', item:{no:w.no, chainWeight:chainWeight, chainLen:chainLen}, empName:emp});
+    hideLoad();
+    if (r.success) {
+      // 체인로트 시트에 로트 기록 (rowNum 비움 → 생산시트 W~Y열은 건드리지 않음)
+      syncToSheet('updateChainLot', {
+        no: r.chainNo, meltNo: w.meltNo||'',
+        chainType: w.chainType||'', left: chainWeight,
+        haeri: r.haeri, chainLen: chainLen,
+        status: '검수대기', emp: emp, rowNum: ''
+      });
+      // 외주이력 시트 입고 기록 (출고 행에 입고 정보 채움)
+      syncToSheet('addOutsourceIn', {
+        no: w.no, chainNo: r.chainNo, meltNo: w.meltNo||'',
+        chainType: w.chainType||'', chainWeight: chainWeight,
+        chainLen: chainLen, haeri: r.haeri, emp: emp
+      });
+      toast('✅ 입고 완료 — ' + r.chainNo + ' (용접실 검수대기)', 2800, 'ok');
+      openOutsourceIn();
+    } else toast('❌ ' + (r.error || '입고 실패'), 2500, 'err');
+  } catch(e) { hideLoad(); toast('❌ 입고 실패: ' + e.message, 2500, 'err'); }
+}
 function invSection(title, lines) {
   var wrap = document.createElement('div');
   var h = '<div class="row-title" style="margin:8px 0 8px">' + title + '</div>';
@@ -2916,6 +3133,7 @@ function renderCheck() {
           '<div style="font-size:24px;font-weight:800;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + size + lenTxt + '</div>' +
           '<div style="font-size:18px;color:#666;margin-top:6px;font-weight:600">번호 ' + x.no + '</div>' +
           '<div style="font-size:19px;color:#1565c0;margin-top:5px;font-weight:700">' + srcLbl + ' ' + fmt(x.claimed) + 'g' +
+            (x.isOutsource ? ' <span style="font-size:14px;background:#eceff1;color:#546e7a;padding:2px 6px;border-radius:4px">🚚 외주</span>' : '') +
             (x.isUrgent ? ' <span style="font-size:14px;background:#fff3e0;color:#e65100;padding:2px 6px;border-radius:4px">긴급 ' + (x.seq||'') + '차</span>' : '') +
             (bad ? ' <span style="color:#c62828">· 불일치 재확인</span>' : '') +
           '</div>' +
