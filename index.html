@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>생산공정 관리 v89</title>
+<title>생산공정 관리 v90</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;height:100dvh;overflow:hidden;touch-action:manipulation;user-select:none;}
@@ -153,7 +153,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;heigh
 </div>
 
 <div class="screen active" id="home">
-  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v89</div></div>
+  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v90</div></div>
   <div class="datebar" id="homeDateBar"></div>
   <div class="scrollbody">
     <div class="home-group">
@@ -1279,7 +1279,7 @@ async function openWireGroupInp(meltNo, rows) {
           '<span class="fu" style="font-size:14px">g</span>' +
         '</div>' +
         '<button id="urgBtn_' + row.rowNum + '" onclick="quickUrgentTransfer(' + row.rowNum + ')" ' +
-          'style="flex-shrink:0;width:44px;height:64px;background:#e65100;color:#fff;border:none;border-radius:12px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">🚀</button>' +
+          'style="flex-shrink:0;width:70px;height:64px;background:#e65100;color:#fff;border:none;border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px"><span style="font-size:17px">🚀</span><span style="font-size:12px;font-weight:700;line-height:1.15">일부<br>보내기</span></button>' +
       '</div>';
   });
   html += '</div>';
@@ -1317,6 +1317,7 @@ async function openWireGroupInp(meltNo, rows) {
     if (el2) el2.onclick = function() { openKP('scrapOut', '재말발생 (g)'); };
   }, 100);
 
+  document.getElementById('saveBtn').textContent = '💾 저장 (작업 마감)';
   document.getElementById('saveBtn').onclick = function() {
     if (!S.fields.touched) S.fields.touched = {};
     // 입력된 항목: 0보다 큰 값 또는 (키패드로 0을 직접 입력했고 먼저 보낸 이력이 있는) 마감 처리
@@ -1424,7 +1425,9 @@ function quickUrgentTransfer(rowNum) {
   document.body.appendChild(overlay);
 
   var inp = document.getElementById('qurgWeight');
-  inp.focus();
+  // 입력 칸에 친 숫자를 미리 채움 (수정 가능)
+  if (currentWeight > 0) inp.value = currentWeight;
+  inp.focus(); inp.select();
 
   // 행선지 토글 (기본: 기계실)
   var qDest = 'MACHINE';
@@ -1565,7 +1568,9 @@ function quickChainTransfer(no) {
   document.body.appendChild(overlay);
 
   var inp = document.getElementById('qchWeight');
-  inp.focus();
+  // 입력 칸에 친 숫자를 미리 채움 (수정 가능)
+  if (entered > 0) inp.value = entered;
+  inp.focus(); inp.select();
   inp.oninput = function() {
     var w = parseFloat(this.value);
     var t = document.getElementById('qchLeftTxt');
@@ -2092,6 +2097,7 @@ function openInp(mode, row) {
     });
   }, 100);
 
+  document.getElementById('saveBtn').textContent = '💾 저장하기';
   document.getElementById('saveBtn').onclick = function() {
     if (!S.fields.weight) { toast('⚠️ 중량을 입력해주세요', 2000, 'err'); return; }
     requirePin(function() { doSave(mode); });
@@ -2458,6 +2464,7 @@ async function openChainProd() {
   saveSession('chainProd');
   S.lotKind = 'chain'; S.basket = {}; S.fields = {prodWeight:0}; S.prodLens = {};
   document.getElementById('lotTitle').textContent = '체인 생산 · 선재 투입';
+  document.getElementById('lotSaveBtn').textContent = '💾 저장 (작업 마감)';
   document.getElementById('lotHdr').style.background = S.deptColor;
   var _lb = document.getElementById('lotBack'); _lb.onclick = goHome; _lb.textContent = '← 홈';
   var _cb = document.getElementById('lotCheckBtn'); if (_cb) _cb.style.display = 'none';
@@ -2492,6 +2499,7 @@ async function openWeldProd() {
   saveSession('weldProd');
   S.lotKind = 'weld'; S.basket = {}; S.fields = {prodWeight:0};
   document.getElementById('lotTitle').textContent = '용접 · 체인 투입';
+  document.getElementById('lotSaveBtn').textContent = '💾 저장하기';
   document.getElementById('lotHdr').style.background = S.deptColor;
   var _lb = document.getElementById('lotBack'); _lb.onclick = goHome; _lb.textContent = '← 홈';
   var _cb = document.getElementById('lotCheckBtn'); if (_cb) _cb.style.display = 'none';
@@ -2543,7 +2551,7 @@ function renderProduceList(box, list) {
           '<div class="inp-field grn" style="width:160px;height:64px;cursor:pointer;display:flex;align-items:center;justify-content:flex-end;padding:0 14px;border-radius:14px;border:2.5px solid #2e7d32" onclick="openProduceKP(\'' + l.no + '\')"><span class="fv" id="pv_' + l.no + '" style="font-size:26px;font-weight:800">' + fmt(cur) + '</span><span class="fu" style="font-size:16px;margin-left:4px">g</span></div>' +
           (isChain ? '<div class="inp-field" style="width:160px;height:64px;cursor:pointer;display:flex;align-items:center;justify-content:flex-end;padding:0 14px;border-radius:14px;background:#e8f5e9;border:2.5px solid #43a047" onclick="openProduceLenKP(\'' + l.no + '\')"><span class="fv" id="pl_' + l.no + '" style="font-size:26px;font-weight:800">' + (curLen||0) + '</span><span class="fu" style="font-size:16px;margin-left:4px">m</span></div>' : '') +
         '</div>' +
-        (isChain ? '<button onclick="quickChainTransfer(\'' + l.no + '\')" style="flex-shrink:0;width:44px;height:138px;background:#e65100;color:#fff;border:none;border-radius:12px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">🚀</button>' : '')
+        (isChain ? '<button onclick="quickChainTransfer(\'' + l.no + '\')" style="flex-shrink:0;width:70px;height:138px;background:#e65100;color:#fff;border:none;border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px"><span style="font-size:18px">🚀</span><span style="font-size:12px;font-weight:700;line-height:1.2">일부<br>보내기</span></button>' : '')
       : '<div style="width:160px;flex-shrink:0;text-align:right;color:#e69500;font-weight:700;font-size:15px">입고확인 대기</div>';
     html += '<div style="display:flex;align-items:center;gap:12px;padding:18px 0;border-bottom:2px solid #eee' + (active ? '' : ';opacity:.5') + '">' +
       '<div style="flex:1;min-width:0">' +
@@ -3662,6 +3670,7 @@ function renderCheck() {
   html += '</div>';
   body.innerHTML = html;
   saveBtn.textContent = '✅ 확인 저장';
+  saveBtn.textContent = '💾 저장하기';
   saveBtn.onclick = submitChecks;
 }
 
