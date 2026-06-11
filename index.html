@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>생산공정 관리 v88</title>
+<title>생산공정 관리 v89</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;height:100dvh;overflow:hidden;touch-action:manipulation;user-select:none;}
@@ -114,6 +114,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;heigh
 </head>
 <body>
 
+<div id="offlineBanner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:600;background:#e65100;color:#fff;font-size:16px;font-weight:700;text-align:center;padding:10px 14px;box-shadow:0 2px 8px rgba(0,0,0,.25)"></div>
 <div class="toast" id="toast"></div>
 <div class="loading" id="loading"><div class="spin"></div><div class="spin-lbl">처리 중...</div></div>
 
@@ -152,7 +153,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;heigh
 </div>
 
 <div class="screen active" id="home">
-  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v88</div></div>
+  <div class="hdr" style="background:#1565c0"><h1>🏭 생산공정 관리</h1><div style="font-size:12px;color:rgba(255,255,255,0.7);position:absolute;right:16px;bottom:8px">v89</div></div>
   <div class="datebar" id="homeDateBar"></div>
   <div class="scrollbody">
     <div class="home-group">
@@ -216,7 +217,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;height:100vh;heigh
 <script type="module">
 // ── Firebase SDK ──────────────────────────────────────────────
 import { initializeApp }                          from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp, writeBatch }
+import { initializeFirestore, persistentLocalCache, persistentSingleTabManager, collection, doc, getDoc, getDocs, setDoc as _fsSetDoc, updateDoc as _fsUpdateDoc, addDoc as _fsAddDoc, deleteDoc as _fsDeleteDoc, query, where, orderBy, onSnapshot, serverTimestamp, writeBatch }
                                                    from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -229,7 +230,22 @@ const firebaseConfig = {
 };
 
 const fbApp = initializeApp(firebaseConfig);
-const db    = getFirestore(fbApp);
+// 오프라인 캐시: 끊긴 동안 입력은 기기(IndexedDB)에 보관 → 연결 복구 시 자동 전송
+let db;
+try {
+  db = initializeFirestore(fbApp, { localCache: persistentLocalCache({ tabManager: persistentSingleTabManager({}) }) });
+} catch(e) {
+  // 캐시 사용 불가 환경(시크릿 모드 등)이면 기본 모드
+  db = initializeFirestore(fbApp, {});
+}
+
+// 오프라인 안전 쓰기: 끊긴 상태에서는 쓰기를 큐에 넣고 즉시 진행 (화면 멈춤 방지)
+// 온라인이면 서버 확인까지 기다림 (기존과 동일)
+function setDoc()    { const p = _fsSetDoc.apply(null, arguments);    return navigator.onLine ? p : Promise.resolve(); }
+function updateDoc() { const p = _fsUpdateDoc.apply(null, arguments); return navigator.onLine ? p : Promise.resolve(); }
+function addDoc()    { const p = _fsAddDoc.apply(null, arguments);    return navigator.onLine ? p : Promise.resolve(); }
+function deleteDoc() { const p = _fsDeleteDoc.apply(null, arguments); return navigator.onLine ? p : Promise.resolve(); }
+function commitBatch(batch) { const p = batch.commit(); return navigator.onLine ? p : Promise.resolve(); }
 
 const DEMO = false;
 
@@ -338,7 +354,7 @@ async function fbSaveWires(items, empName) {
     const ref = doc(db, 'rows', 'row_' + it.rowNum);
     batch.update(ref, {wireReal: it.weight + sent0, wireEmp: empName, wireTs: serverTimestamp()});
   });
-  await batch.commit();
+  await commitBatch(batch);
   // 입력값 = 저울의 남은 무게(E). 총 생산량 = E + 먼저 보낸 양
   for (const it of items) {
     const lotNo = String(it.rowNum) + '-W';
@@ -707,16 +723,91 @@ async function sheetGet(action, params) {
 }
 
 // 백그라운드로 구글 시트에 데이터 전송 (작업자는 기다리지 않음)
+// ── 구글 시트 동기화 (실패 시 큐에 보관 → 연결 복구 시 자동 재전송) ──
+var SHEET_QUEUE_KEY = 'sheetQueue_v1';
+function loadSheetQueue() {
+  try { return JSON.parse(localStorage.getItem(SHEET_QUEUE_KEY) || '[]'); } catch(e) { return []; }
+}
+function saveSheetQueue(q) {
+  try { localStorage.setItem(SHEET_QUEUE_KEY, JSON.stringify(q)); } catch(e) {}
+}
+function queueSheetPayload(payload) {
+  var q = loadSheetQueue();
+  q.push(payload);
+  saveSheetQueue(q);
+  updateOfflineBanner();
+}
+function sendSheetPayload(payload) {
+  return fetch(SCRIPT_URL, {
+    method: 'POST',
+    redirect: 'follow',
+    headers: {'Content-Type': 'text/plain'},
+    body: JSON.stringify(payload)
+  });
+}
 function syncToSheet(action, data) {
+  var payload = Object.assign({action: action, _ts: Date.now()}, data);
+  if (!navigator.onLine) { queueSheetPayload(payload); return; }
   try {
-    fetch(SCRIPT_URL, {
-      method: 'POST',
-      redirect: 'follow',
-      headers: {'Content-Type': 'text/plain'},
-      body: JSON.stringify(Object.assign({action: action}, data))
-    }).catch(function() {}); // 실패해도 무시
-  } catch(e) {}
-} // rowNum -> row data for KP access
+    sendSheetPayload(payload).catch(function() { queueSheetPayload(payload); });
+  } catch(e) { queueSheetPayload(payload); }
+}
+// 큐 재전송 (연결 복구 시 / 주기적)
+var _flushing = false;
+function flushSheetQueue() {
+  if (_flushing || !navigator.onLine) return;
+  var q = loadSheetQueue();
+  if (!q.length) { updateOfflineBanner(); return; }
+  _flushing = true;
+  saveSheetQueue([]);
+  var failed = [];
+  var done = 0;
+  q.forEach(function(p) {
+    sendSheetPayload(p)
+      .catch(function() { failed.push(p); })
+      .finally(function() {
+        done++;
+        if (done === q.length) {
+          if (failed.length) saveSheetQueue(loadSheetQueue().concat(failed));
+          _flushing = false;
+          updateOfflineBanner();
+          var sent = q.length - failed.length;
+          if (sent > 0 && typeof toast === 'function') toast('📤 보관된 시트 기록 ' + sent + '건 전송 완료', 2500, 'ok');
+        }
+      });
+  });
+}
+setInterval(flushSheetQueue, 60000); // 1분마다 재시도
+
+// ── 오프라인 배너 ──
+function updateOfflineBanner() {
+  var b = document.getElementById('offlineBanner');
+  if (!b) return;
+  var qn = loadSheetQueue().length;
+  if (!navigator.onLine) {
+    b.textContent = '⚠️ 인터넷 연결 끊김 — 입력은 기기에 보관되며, 연결되면 자동 전송됩니다' + (qn ? ' (대기 ' + qn + '건)' : '');
+    b.style.display = 'block';
+  } else if (qn > 0) {
+    b.textContent = '📤 전송 대기 중인 기록 ' + qn + '건 — 자동 재전송 중입니다';
+    b.style.display = 'block';
+  } else {
+    b.style.display = 'none';
+  }
+}
+window.addEventListener('offline', function() {
+  updateOfflineBanner();
+  if (typeof toast === 'function') toast('⚠️ 인터넷이 끊겼습니다 — 입력은 보관됩니다', 3000, 'err');
+});
+window.addEventListener('online', function() {
+  updateOfflineBanner();
+  if (typeof toast === 'function') toast('✅ 인터넷 연결 복구 — 보관된 기록 전송 중', 2500, 'ok');
+  flushSheetQueue();
+});
+document.addEventListener('DOMContentLoaded', function() {
+  updateOfflineBanner();
+  if (navigator.onLine) flushSheetQueue();
+});
+// rowNum -> row data for KP access
 var S = {
   dept:null, deptName:null, deptColor:'#1565c0',
   user:null, loginPin:'', personalPin:'', personalCB:null,
