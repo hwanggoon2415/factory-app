@@ -336,6 +336,20 @@ async function fbSaveWire(rowNum, weight, empName) {
   return {success:true};
 }
 
+// 체인생산 단건 저장
+async function fbSaveChain(rowNum, weight, empName) {
+  const ref = doc(db, 'rows', 'row_' + rowNum);
+  await updateDoc(ref, {chainProd: weight, chainEmp: empName, chainTs: serverTimestamp()});
+  return {success:true};
+}
+
+// 용접 단건 저장
+async function fbSaveWeld(rowNum, weight, empName) {
+  const ref = doc(db, 'rows', 'row_' + rowNum);
+  await updateDoc(ref, {weldAfter: weight, weldEmp: empName, weldTs: serverTimestamp()});
+  return {success:true};
+}
+
 // 선재 후중량 저장 (복수)
 async function fbSaveWires(items, empName) {
   // 기존 긴급전달(-P)로 이미 나간 분 합계 먼저 조회
@@ -683,7 +697,7 @@ async function fbAddRow(rowData) {
 // ── 기존 apiGet/apiPost를 Firebase로 교체 ─────────────────────
 window._fbApi = {
   fbGetRows, fbVerifyDept, fbVerifyEmp,
-  fbSaveWire, fbSaveWires,
+  fbSaveWire, fbSaveWires, fbSaveChain, fbSaveWeld,
   fbGetPendingWires, fbGetPendingChains,
   fbConfirmWires, fbConfirmChains,
   fbGetWireLots, fbGetChainLots,
@@ -2391,8 +2405,8 @@ async function apiPost(data) {
   var act = data.action;
   if (act === 'saveWire')        return api.fbSaveWire(data.rowNum, data.weight, data.empName);
   if (act === 'saveWires')       return api.fbSaveWires(data.items, data.empName);
-  if (act === 'saveChain')       return api.fbSaveWire(data.rowNum, data.weight, data.empName);
-  if (act === 'saveWeld')        return api.fbSaveWire(data.rowNum, data.weight, data.empName);
+  if (act === 'saveChain')       return api.fbSaveChain(data.rowNum, data.weight, data.empName);
+  if (act === 'saveWeld')        return api.fbSaveWeld(data.rowNum, data.weight, data.empName);
   if (act === 'confirmWires')    return api.fbConfirmWires(data.items, data.empName);
   if (act === 'confirmChains')   return api.fbConfirmChains(data.items, data.empName);
   if (act === 'saveChainsBatch') return api.fbSaveChainsBatch(data.items, data.empName);
@@ -2715,7 +2729,8 @@ function submitProduce() {
     }
     requirePin(function() {
       if (S.prodDiff && S.prodDiff.chainBad) {
-        syncToSheet('updateDiff', {rowNum: items[0].no, mode:'chain', chainBad: S.prodDiff.chainBad});
+        var _chainRowNum = (S.availMap && S.availMap[items[0].no] && S.availMap[items[0].no].rowNum) || '';
+        syncToSheet('updateDiff', {rowNum: _chainRowNum, mode:'chain', chainBad: S.prodDiff.chainBad});
       }
       doSubmitProduce(items);
     });
@@ -2743,7 +2758,8 @@ function submitProduce() {
     if (!weldItems.length) { toast('⚠️ 용접 후중량을 입력하세요', 2000, 'err'); return; }
     requirePin(function() {
       if (S.prodDiff && S.prodDiff.weldBad) {
-        syncToSheet('updateDiff', {rowNum: weldItems[0].no, mode:'weld', weldBad: S.prodDiff.weldBad});
+        var _weldRowNum = (S.availMap && S.availMap[weldItems[0].no] && S.availMap[weldItems[0].no].rowNum) || '';
+        syncToSheet('updateDiff', {rowNum: _weldRowNum, mode:'weld', weldBad: S.prodDiff.weldBad});
       }
       doSubmitProduce(weldItems);
     });
