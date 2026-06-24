@@ -980,7 +980,7 @@ function openMenu() {
       {ico:'⚙️', title:'초기 세팅', desc:'부서 비밀번호 · 작업자 관리', action:function(){openSetup();}},
       {ico:'🗑', title:'테스트 데이터 초기화', desc:'생산·로트·출하 기록 전부 삭제 (직원/비밀번호 유지)', action:function(){confirmResetData();}}
     ],
-    OUTSOURCE:[{ico:'📥', title:'외주 입고 등록', desc:'가공 완료 체인 입고 → 용접실', action:function(){saveSession('outsourceIn');openOutsourceIn();}}],
+    OUTSOURCE:[{ico:'📥', title:'외주 입고 등록', desc:'준비 중', action:function(){toast('준비 중',2000);}}],
     GARANG:   [{ico:'🪢', title:'가랑 작업', desc:'준비 중', action:function(){toast('준비 중',2000);}}],
     ASSEMBLY: [{ico:'🔗', title:'조립 작업', desc:'준비 중', action:function(){toast('준비 중',2000);}}],
     QUALITY:  [{ico:'🔍', title:'품질 검사', desc:'준비 중', action:function(){toast('준비 중',2000);}}],
@@ -1768,7 +1768,7 @@ async function openUrgentList() {
 
   // 전체 rows 조회 (후중량 입력 전/후 모두)
   var rows = [];
-  try { var r = await apiGet('getRows', {}); rows = r.data || []; S.rows = rows; } catch(e) {}
+  try { var r = await apiGet('getRows', {dept: S.dept}); rows = r.data || []; S.rows = rows; } catch(e) {}
 
   // 용접 완료된 것 제외, 체인생산 완료 안된 것만 (아직 처리 필요한 것)
   var urgentRows = rows.filter(function(r) { return !r.chainProd; });
@@ -2914,7 +2914,7 @@ async function openProcessEdit() {
   var _lb = document.getElementById('listBack'); _lb.onclick = function(){saveSession('menu');openMenu();}; _lb.textContent = '← 메뉴';
   showLoad();
   var rows = [];
-  try { var r = await apiGet('getRows', {}); rows = r.data || []; } catch(e) {}
+  try { var r = await apiGet('getRows', {dept:'MGMT'}); rows = r.data || []; } catch(e) {}
   hideLoad();
 
   var body = document.getElementById('listBody'); body.innerHTML = '';
